@@ -33,7 +33,7 @@ function Navbar() {
       if (!token) return;
       console.log(token);
 
-      const res = await fetch("https://spendwise01-nine.vercel.app/api/me", {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/me`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
