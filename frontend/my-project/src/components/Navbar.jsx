@@ -11,7 +11,7 @@ import {
 import ThemeToggle from "./ThemeToggle";
 import { Navcontent } from "../context/Navcontent";
 import { Expensecontent } from "../context/Expensecontent";
-import Logo  from "../assets/AuraSpend1.png";
+import Logo from "../assets/AuraSpend1.png";
 function Navbar() {
   const { navamt, target1 } = useContext(Navcontent);
   const { expenses } = useContext(Expensecontent);
@@ -47,18 +47,18 @@ function Navbar() {
   };
 
   return (
-    <div className="p-4 bg-[#4fab9a] dark:bg-gray-800 flex flex-col md:flex-row justify-between items-center gap-2">
+    <div className="p-4 bg-indigo-500 dark:bg-gray-800 flex flex-col md:flex-row justify-between items-center gap-2">
       <div className="flex flex-row items-center gap-2">
-      <img
-        src={Logo}
-        alt="AuraSpend Logo"
-        className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
-      />
+        <img
+          src={Logo}
+          alt="SpendWise Logo"
+          className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
+        />
 
-      <h1 className="text-xl font-bold text-slate-700 md:w-auto w-full text-center md:text-left">
-        AuraSpend
-      </h1>
-    </div>
+        <h1 className="text-xl font-bold text-white md:w-auto w-full text-center md:text-left">
+          SpendWise
+        </h1>
+      </div>
       {/* Right side: stats + theme + auth */}
       <div className="flex flex-wrap gap-2 md:gap-4 justify-center items-center w-full md:w-auto">
         {/* Stats (hidden on very small screens) */}

@@ -48,25 +48,26 @@ def token_required(f):
             public_key = keys.get(kid)
             if public_key is None:
                 return jsonify({"message": "Invalid token: Signing key not found."}), 401
-
-            # 4. Verify token
+            issuer_url = os.getenv("CLERK_ISSUER_URL")
             payload = jwt.decode(
-            token,
-            public_key,
-            algorithms=["RS256"],
-            options={"verify_aud": False},
-            issuer="https://known-catfish-97.clerk.accounts.dev",
-)
-
-
+                token,
+                public_key,
+                algorithms=["RS256"],
+                options={"verify_aud": False}, # Clerk often doesn't use aud for frontend tokens
+                issuer=issuer_url, # Will verify if issuer_url is not None
+                leeway=60 # Allow 60 seconds of clock skew
+            )
             # 5. Attach user id to request
             request.user_id = payload.get("sub")
 
-        except jwt.ExpiredSignatureError:
+        except jwt.ExpiredSignatureError as e:
+            print(f"Auth Error (Expired): {e}")
             return jsonify({"message": "Token has expired. Please log in again."}), 401
-        except PyJWTError:
-            return jsonify({"message": "Token verification failed."}), 401
-        except Exception:
+        except PyJWTError as e:
+            print(f"Auth Error (Verification): {e}")
+            return jsonify({"message": f"Token verification failed: {str(e)}"}), 401
+        except Exception as e:
+            print(f"Auth Error (General): {e}")
             return jsonify({"message": "Internal verification error."}), 500
 
         return f(*args, **kwargs)

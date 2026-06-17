@@ -3,6 +3,12 @@ from flask import Flask, jsonify
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from flask_cors import CORS
+import certifi
+import dns.resolver
+
+# Force Google DNS to bypass ISP SRV block
+dns.resolver.default_resolver = dns.resolver.Resolver(configure=False)
+dns.resolver.default_resolver.nameservers = ['8.8.8.8']
 
 
 mongo_client=None
@@ -20,7 +26,7 @@ def create_app():
     CORS(app)
     mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
     try:
-        mongo_client = MongoClient(mongo_uri)
+        mongo_client = MongoClient(mongo_uri, tlsCAFile=certifi.where())
         db = mongo_client.expensetrackerdb04
         print("MongoDB connection is successful")
     except Exception as e:
