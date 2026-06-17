@@ -38,20 +38,25 @@ function HomePage() {
   // --- AI API CALL ---
   const handleAskAI = async () => {
     setLoadingPlan(true);
-    setAiResult(null); 
-    
+    setAiResult(null);
+
     try {
       const token = await getToken();
-      const response = await axios.get("http://127.0.0.1:5000/api/ai", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
+      const response = await axios.get(
+        "https://spendwise01-nine.vercel.app/api/ai",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         },
-      });
+      );
       setAiResult(response.data.report || "No insights available.");
     } catch (error) {
       console.error("AI Error:", error);
-      setAiResult("Failed to generate AI insights. Check if your backend is running, the Groq API key is set, and your database is connected.");
+      setAiResult(
+        "Failed to generate AI insights. Check if your backend is running, the Groq API key is set, and your database is connected.",
+      );
     } finally {
       setLoadingPlan(false);
     }

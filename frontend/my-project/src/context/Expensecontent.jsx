@@ -8,12 +8,15 @@ export const ExpenseProvider = ({ children }) => {
   const fetchExpenses = async () => {
     try {
       const token = await getToken();
-      const response = await axios.get("http://127.0.0.1:5000/api/expenses", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
+      const response = await axios.get(
+        "https://spendwise01-nine.vercel.app/api/expenses",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         },
-      });
+      );
       setExpenses(response.data);
       console.log("expenses", response.data);
     } catch (e) {
