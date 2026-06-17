@@ -7,3 +7,4 @@ certifi==2025.11.12
 gunicorn==23.0.0
 requests==2.32.3
 PyJWT==2.10.0
+groq
