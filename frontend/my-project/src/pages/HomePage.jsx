@@ -43,7 +43,7 @@ function HomePage() {
     try {
       const token = await getToken();
       const response = await axios.get(
-        "https://spendwise01-nine.vercel.app/api/ai",
+        `${import.meta.env.VITE_API_BASE_URL}/api/ai`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
