@@ -1,134 +1,114 @@
 import React, { useContext, useMemo } from "react";
-import { Expensecontent } from "../context/Expensecontent"; // Adjust path
-import { Navcontent } from "../context/Navcontent"; // Adjust path
-
-// --- NEW/UPDATED IMPORTS ---
+import { Expensecontent } from "../context/Expensecontent";
+import { Navcontent } from "../context/Navcontent";
 import {
   Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend,
-  CategoryScale, // For Bar Chart
-  LinearScale, // For Bar Chart
-  BarElement, // For Bar Chart
-  Title, // To add titles
-} from "chart.js";
-import { Doughnut, Bar } from "react-chartjs-2"; // Import Bar
-
-// --- REGISTER ALL CHART COMPONENTS ---
-ChartJS.register(
-  ArcElement,
-  Tooltip,
-  Legend,
   CategoryScale,
   LinearScale,
   BarElement,
-  Title
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+} from "chart.js";
+import { Bar, Doughnut } from "react-chartjs-2";
+import { motion } from "framer-motion";
+import {
+  Wallet,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  TrendingUp,
+  PieChart as PieIcon,
+  Activity,
+  Calendar,
+  CreditCard,
+  Sparkles,
+} from "lucide-react";
+
+// --- 1. Register ChartJS Components ---
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement
 );
 
-// --- StatCard Component (no changes) ---
-const StatCard = ({ title, amount, colorClass }) => {
-  return (
-    <div className="flex-1 p-5 bg-white rounded-lg shadow-md">
-      <h3 className="m-0 text-sm font-medium text-gray-500">{title}</h3>
-      <p className={`mt-2 mb-0 text-3xl font-bold ${colorClass}`}>
-        ₹{amount.toFixed(2)}
-      </p>
-    </div>
-  );
-};
-
-// --- The Main Dashboard Component ---
 function Dashboard() {
-  const { navamt } = useContext(Navcontent);
   const { expenses } = useContext(Expensecontent);
+  const { navamt } = useContext(Navcontent);
 
-  // --- 1. ALL-TIME CALCULATIONS ---
-  const totalamt = useMemo(() => {
-    return expenses.reduce((accum, current) => {
-      const amt1 = parseFloat(current.amount) || 0;
-      return amt1 + accum;
-    }, 0);
-  }, [expenses]);
+  // --- 2. CALCULATIONS ---
+  const totalamt = expenses.reduce((accum, curr) => {
+    return accum + (parseFloat(curr.amount) || 0);
+  }, 0);
+
   const remainingBalance = navamt - totalamt;
 
-  // --- 2. TODAY'S CALCULATIONS ---
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const expensesToday = useMemo(() => {
-    return expenses.filter((exp) => exp.date === today);
-  }, [expenses, today]);
+  const categoryTotals = expenses.reduce((acc, curr) => {
+    const cat = curr.category || "Other";
+    const amt = parseFloat(curr.amount) || 0;
+    acc[cat] = (acc[cat] || 0) + amt;
+    return acc;
+  }, {});
 
-  // --- 3. CHART DATA PREP ---
-
-  // --- Data for TODAY'S BAR CHART ---
-  const categoryDataToday = useMemo(() => {
-    const categories = {}; // e.g., { Food: 150, Transport: 50 }
-    expensesToday.forEach((exp) => {
-      const category = exp.category || "Uncategorized";
-      const amount = parseFloat(exp.amount) || 0;
-      categories[category] = (categories[category] || 0) + amount;
-    });
-    return {
-      labels: Object.keys(categories),
-      data: Object.values(categories),
-    };
-  }, [expensesToday]);
+  const labels = Object.keys(categoryTotals);
+  const dataValues = Object.values(categoryTotals);
 
   const barData = {
-    labels: categoryDataToday.labels,
+    labels: labels,
     datasets: [
       {
-        label: "Spent Today",
-        data: categoryDataToday.data,
-        backgroundColor: "#FFB1C1",
+        label: "Expenses",
+        data: dataValues,
+        backgroundColor: [
+          "#6366f1", // Indigo 500
+          "#ec4899", // Pink 500
+          "#10b981", // Emerald 500
+          "#f59e0b", // Amber 500
+          "#3b82f6", // Blue 500
+        ],
+        borderRadius: 8,
       },
     ],
   };
 
   const barOptions = {
     responsive: true,
-    indexAxis: "y", // Makes it a horizontal bar chart
+    maintainAspectRatio: false,
     plugins: {
-      legend: {
-        display: false, // Hide legend, labels are enough
+      legend: { display: false },
+      title: { display: false },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        grid: { color: "#f1f5f9" },
+        ticks: { font: { family: "Poppins", size: 10 } },
       },
-      title: {
-        display: true,
-        text: "Today's Spending by Category",
-        font: { size: 16 },
+      x: {
+        grid: { display: false },
+        ticks: { font: { family: "Poppins", size: 10 } },
       },
     },
   };
 
-  // --- Data for ALL-TIME DOUGHNUT CHART ---
-  const categoryDataAllTime = useMemo(() => {
-    const categories = {};
-    expenses.forEach((exp) => {
-      const category = exp.category || "Uncategorized";
-      const amount = parseFloat(exp.amount) || 0;
-      categories[category] = (categories[category] || 0) + amount;
-    });
-    return {
-      labels: Object.keys(categories),
-      data: Object.values(categories),
-    };
-  }, [expenses]);
-
+  // B) Doughnut Data
   const doughnutData = {
-    labels: categoryDataAllTime.labels,
+    labels: labels,
     datasets: [
       {
-        label: "Spending",
-        data: categoryDataAllTime.data,
+        data: dataValues,
         backgroundColor: [
-          "#FF6384",
-          "#36A2EB",
-          "#FFCE56",
-          "#4BC0C0",
-          "#9966FF",
-          "#FF9F40",
+          "#6366f1",
+          "#ec4899",
+          "#10b981",
+          "#f59e0b",
+          "#3b82f6",
         ],
-        borderColor: "#fff",
+        borderColor: "#ffffff",
         borderWidth: 2,
       },
     ],
@@ -136,106 +116,308 @@ function Dashboard() {
 
   const doughnutOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
-      legend: { position: "top" },
-      title: {
-        display: true,
-        text: "All-Time Spending by Category",
-        font: { size: 16 },
+      legend: {
+        position: "bottom",
+        labels: { font: { family: "Poppins", size: 10 } },
       },
     },
   };
 
-  // --- 4. Render the Dashboard ---
+  // C) Today's Expenses Data
+  const expensesToday = expenses.filter(
+    (expense) => expense.date === new Date().toISOString().slice(0, 10)
+  );
+
+  // D) Last 7 Days Trend
+  const last7DaysData = useMemo(() => {
+    const todayDate = new Date();
+    const labels = [];
+    const data = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(todayDate.getDate() - i);
+      const dateStr = d.toISOString().slice(0, 10);
+
+      const dayLabel = d.toLocaleDateString("en-US", { weekday: "short" });
+      labels.push(dayLabel);
+
+      const daySpend = expenses
+        .filter((e) => e.date === dateStr)
+        .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+      data.push(daySpend);
+    }
+    return { labels, data };
+  }, [expenses]);
+
+  const trendData = {
+    labels: last7DaysData.labels,
+    datasets: [
+      {
+        label: "Daily Spend",
+        data: last7DaysData.data,
+        backgroundColor: "#22c55e",
+        borderRadius: 6,
+        barThickness: 12,
+      },
+    ],
+  };
+
+  const trendOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false }, title: { display: false } },
+    scales: {
+      y: { display: false },
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+    },
+  };
+
+  // --- Animation Variants ---
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 50 } },
+  };
+
+  // Format Helper
+  const formatCurrency = (val) =>
+    `₹${(val || 0).toLocaleString(undefined, { minimumFractionDigits: 0 })}`;
+
+  // --- Render ---
   return (
-    <div className="p-5 font-sans bg-gray-100 min-h-screen">
-      <h1 className="mb-5 text-3xl font-bold text-gray-800">
-        My Budget Dashboard
-      </h1>
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="p-6 font-sans bg-slate-50 min-h-screen w-full"
+    >
+      {/* Date Header */}
+      <motion.div
+        variants={itemVariants}
+        className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4"
+      >
+        <div>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            Dashboard Overview
+          </h1>
+          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">
+            Financial Data Analytics
+          </p>
+        </div>
+        <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100 flex items-center gap-2">
+          <Calendar size={16} className="text-indigo-600" />
+          <span className="text-xs font-bold text-slate-600">
+            {new Date().toLocaleDateString("en-US", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+            })}
+          </span>
+        </div>
+      </motion.div>
 
-      {/* --- Stat Cards Section --- */}
-      <div className="flex flex-col md:flex-row gap-5 mb-5">
-        <StatCard
-          title="Total Budget"
-          amount={navamt}
-          colorClass="text-blue-500"
-        />
-        <StatCard
-          title="Total Spent"
-          amount={totalamt}
-          colorClass="text-red-500"
-        />
-        <StatCard
-          title="Remaining"
-          amount={remainingBalance}
-          colorClass="text-green-500"
-        />
-      </div>
-      {/* --- Main Content Section (List & Chart) --- */}
-      <div className="flex flex-col lg:flex-row gap-5 mt-10">
-        {/* Left Column: Today's Chart & All Expenses List */}
-        <div className="flex-1 flex flex-col gap-5">
-          {/* --- NEW "TODAY'S SPENDING" BAR CHART --- */}
-          <div className="bg-white rounded-lg p-5 shadow-md">
-            {expensesToday.length > 0 ? (
-              <Bar data={barData} options={barOptions} />
-            ) : (
-              <div className="text-center text-black h-full flex flex-col justify-center items-center">
-                <h3 className="text-xl font-semibold mb-2">Today's Spending</h3>
-                <p>No expenses added yet today.</p>
-              </div>
-            )}
+      {/* --- Stat Cards --- */}
+      <motion.div
+        variants={itemVariants}
+        className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
+      >
+        {/* Total Budget */}
+        <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center justify-between group transition-all hover:shadow-md">
+          <div className="space-y-1">
+            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+              Total Budget
+            </h3>
+            <p className="text-3xl font-extrabold tracking-tight text-indigo-600">
+              {formatCurrency(navamt)}
+            </p>
           </div>
-          {/* --- END OF NEW CARD --- */}
+          <div className="p-4 rounded-2xl bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+            <Wallet size={24} />
+          </div>
+        </div>
 
-          {/* All Recent Expenses Card */}
-          <div className="bg-white rounded-lg p-5 shadow-md h-full">
-            <h3 className="text-xl font-semibold mb-4">All Recent Expenses</h3>
-            <ul className="list-none p-0 m-0 max-h-96 overflow-y-auto">
+        {/* Total Spent */}
+        <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center justify-between group transition-all hover:shadow-md">
+          <div className="space-y-1">
+            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+              Total Spent
+            </h3>
+            <p className="text-3xl font-extrabold tracking-tight text-rose-500">
+              {formatCurrency(totalamt)}
+            </p>
+          </div>
+          <div className="p-4 rounded-2xl bg-rose-50 text-rose-500 group-hover:bg-rose-500 group-hover:text-white transition-colors">
+            <ArrowUpCircle size={24} />
+          </div>
+        </div>
+
+        {/* Remaining */}
+        <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center justify-between group transition-all hover:shadow-md">
+          <div className="space-y-1">
+            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+              Remaining
+            </h3>
+            <p className="text-3xl font-extrabold tracking-tight text-emerald-500">
+              {formatCurrency(remainingBalance)}
+            </p>
+          </div>
+          <div className="p-4 rounded-2xl bg-emerald-50 text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+            <ArrowDownCircle size={24} />
+          </div>
+        </div>
+      </motion.div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* --- Main Content Left (2 Cols) --- */}
+        <div className="lg:col-span-2 flex flex-col gap-8">
+          {/* Last 7 Days Trend */}
+          <motion.div
+            variants={itemVariants}
+            className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 relative overflow-hidden"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-lg font-bold text-slate-800">
+                  Weekly Trend
+                </h2>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                  Last 7 Days Spending
+                </p>
+              </div>
+              <div className="bg-emerald-50 p-2 rounded-lg text-emerald-600">
+                <TrendingUp size={20} />
+              </div>
+            </div>
+            <div className="h-[200px] w-full">
+              <Bar data={trendData} options={trendOptions} />
+            </div>
+          </motion.div>
+
+          {/* Recent Transactions List */}
+          <motion.div
+            variants={itemVariants}
+            className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex-1"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-lg font-bold text-slate-800">
+                  Transactions
+                </h2>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                  Recent Activity
+                </p>
+              </div>
+              <div className="bg-slate-50 p-2 rounded-lg text-slate-600">
+                <CreditCard size={20} />
+              </div>
+            </div>
+
+            <div className="max-h-[300px] overflow-y-auto pr-2 space-y-3 custom-scrollbar">
               {expenses.length === 0 ? (
-                <p className="">No expenses added yet.</p>
+                <div className="text-center py-10 text-slate-400 italic">
+                  No transactions found
+                </div>
               ) : (
                 expenses.map((exp) => (
-                  <li
+                  <div
                     key={exp.id}
-                    className="flex justify-between items-center py-3 border-b border-gray-200 last:border-b-0"
+                    className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition-colors border border-transparent hover:border-slate-100"
                   >
-                    <span className="font-medium">
-                      {exp.title}{" "}
-                      <span className="text-gray-500 text-sm">
-                        ({exp.category})
-                      </span>
+                    <div className="flex items-center gap-4">
+                      <div
+                        className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm
+                                        ${
+                                          exp.category === "Food"
+                                            ? "bg-orange-100 text-orange-600"
+                                            : exp.category === "Transport"
+                                              ? "bg-blue-100 text-blue-600"
+                                              : "bg-indigo-100 text-indigo-600"
+                                        }`}
+                      >
+                        {exp.title.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-800 text-sm">
+                          {exp.title}
+                        </h4>
+                        <p className="text-xs text-slate-400 font-medium">
+                          {exp.category} • {exp.date}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="font-extrabold text-slate-900">
+                      -₹{parseFloat(exp.amount).toFixed(0)}
                     </span>
-                    <span className="font-semibold text-red-500">
-                      -₹{parseFloat(exp.amount).toFixed(2)}
-                    </span>
-                  </li>
+                  </div>
                 ))
               )}
-            </ul>
-          </div>
-          <div className="bg-white p-5 min-h-[150px] rounded-lg shadow-lg">
-            <h1 className=" text-xl font-semibold">Daily Tips</h1>
-            <p className="text-sm text-gray-500">Here's a personalized insight based on your recent spending habits.</p>
-          </div>
+            </div>
+          </motion.div>
         </div>
 
-        {/* Right Column: All-Time Doughnut Chart */}
-        <div className="flex-1">
-          <div className="bg-white rounded-lg p-5 shadow-md h-full">
-            {expenses.length > 0 ? (
-              <div className="w-full max-w-md mx-auto">
-                <Doughnut data={doughnutData} options={doughnutOptions} />
+        {/* --- Sidebar Right (1 Col) --- */}
+        <div className="flex flex-col gap-8">
+          {/* Category Distribution */}
+          <motion.div
+            variants={itemVariants}
+            className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-slate-800">Categories</h2>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                  All Time Breakdown
+                </p>
               </div>
-            ) : (
-              <p className="text-center text-gray-500 h-full flex justify-center items-center">
-                Add expenses to see a breakdown chart.
+              <div className="bg-indigo-50 p-2 rounded-lg text-indigo-600">
+                <PieIcon size={20} />
+              </div>
+            </div>
+            <div className="h-[250px] flex items-center justify-center">
+              {expenses.length > 0 ? (
+                <Doughnut data={doughnutData} options={doughnutOptions} />
+              ) : (
+                <p className="text-xs text-slate-400 font-medium text-center">
+                  No data available
+                </p>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Daily Tips Banner */}
+          <motion.div
+            variants={itemVariants}
+            className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 relative overflow-hidden"
+          >
+            <div className="relative z-10">
+              <div className="bg-indigo-50 w-fit p-2 rounded-lg mb-4">
+                <Sparkles size={20} className="text-indigo-600" />
+              </div>
+              <h2 className="text-xl font-bold mb-2 text-slate-900">
+                Daily Tips
+              </h2>
+              <p className="text-slate-500 text-xs font-medium leading-relaxed opacity-80">
+                "Small daily savings add up to huge yearly results. Standardize
+                your spending habits to unlock financial freedom!"
               </p>
-            )}
-          </div>
+            </div>
+            {/* Decor */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full opacity-50 blur-2xl -mr-10 -mt-10"></div>
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-50 rounded-full opacity-50 blur-xl -ml-10 -mb-10"></div>
+          </motion.div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
