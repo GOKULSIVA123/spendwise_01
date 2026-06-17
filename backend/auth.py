@@ -1,27 +1,32 @@
-import os,requests
-from flask import json,jsonify,request
+import os
+import requests
+from flask import json, jsonify, request
 from functools import wraps
 import jwt
-from jwt.algorithms import RSAAlgorithm
+from jwt import algorithms as jwt_algorithms
 from jwt.exceptions import PyJWTError
 from dotenv import load_dotenv
+
 load_dotenv()
-CLERK_FRONTEND_API=os.getenv("CLERK_FRONTEND_API")
-CLERK_JWKS_URL=os.getenv("CLERK_JWKS_URL")
-PUBLIC_KEYS={}
+
+CLERK_FRONTEND_API = os.getenv("CLERK_FRONTEND_API")
+CLERK_JWKS_URL = os.getenv("CLERK_JWKS_URL")
+PUBLIC_KEYS = {}
+
+
 def get_publickey():
     if PUBLIC_KEYS:
         return PUBLIC_KEYS
     try:
-        response=requests.get(CLERK_JWKS_URL)
+        response = requests.get(CLERK_JWKS_URL)
         response.raise_for_status()
-        jwks=response.json()
+        jwks = response.json()
         print(jwks)
-        for key in jwks['keys']:
-            kid=key['kid']
-            print("key",key)
-            public_key=RSAAlgorithm.from_jwk(json.dumps(key))
-            PUBLIC_KEYS[kid]=public_key
+        for key in jwks.get("keys", []):
+            kid = key.get("kid")
+            print("key", key)
+            public_key = jwt_algorithms.RSAAlgorithm.from_jwk(json.dumps(key))
+            PUBLIC_KEYS[kid] = public_key
     except Exception as e:
         print(f"ERROR: Invalid JWKS structure or processing error: {e}")
         return None
