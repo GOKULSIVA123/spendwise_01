@@ -1,4 +1,5 @@
 import React, { useContext } from "react";
+import { useLocation } from "react-router-dom";
 import {
   SignedIn,
   SignedOut,
@@ -8,15 +9,18 @@ import {
   useUser,
   useAuth,
 } from "@clerk/clerk-react";
-import ThemeToggle from "./ThemeToggle";
+import { Sun, Moon, Target, ArrowDownCircle, Wallet } from "lucide-react";
 import { Navcontent } from "../context/Navcontent";
 import { Expensecontent } from "../context/Expensecontent";
-import Logo from "../assets/AuraSpend1.png";
+import { Themecontent } from "../context/Themecontext";
+
 function Navbar() {
   const { navamt, target1 } = useContext(Navcontent);
   const { expenses } = useContext(Expensecontent);
+  const { theme, setTheme } = useContext(Themecontent);
   const { user } = useUser();
-  const { getToken, isSignedIn } = useAuth();
+  const { isSignedIn } = useAuth();
+  const location = useLocation();
 
   const totalamt = expenses.reduce((accum, current) => {
     const amt1 = parseFloat(current.amount) || 0;
@@ -25,82 +29,99 @@ function Navbar() {
 
   const amt2 = navamt - totalamt;
 
-  const callBackend = async () => {
-    if (!isSignedIn) return;
-
-    try {
-      const token = await getToken();
-      if (!token) return;
-      console.log(token);
-
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await res.json();
-      console.log("Backend /api/me:", data);
-    } catch (err) {
-      console.error("Error calling backend:", err);
+  const getPageTitle = () => {
+    switch (location.pathname) {
+      case "/":
+        return "Home Overview";
+      case "/Dashboard":
+        return "Analytics Dashboard";
+      case "/Expense":
+        return "Expenses Log";
+      default:
+        return "SpendWise";
     }
   };
 
-  return (
-    <div className="p-4 bg-indigo-500 dark:bg-gray-800 flex flex-col md:flex-row justify-between items-center gap-2">
-      <div className="flex flex-row items-center gap-2">
-        <img
-          src={Logo}
-          alt="SpendWise Logo"
-          className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
-        />
+  const handleToggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
 
-        <h1 className="text-xl font-bold text-white md:w-auto w-full text-center md:text-left">
-          SpendWise
+  return (
+    <div className="p-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200/60 dark:border-slate-800/80 flex flex-col md:flex-row justify-between items-center gap-3 transition-all duration-305">
+      {/* Left side: Contextual Page Title */}
+      <div className="self-start md:self-center">
+        <h1 className="text-lg font-bold text-slate-800 dark:text-slate-200 tracking-tight">
+          {getPageTitle()}
         </h1>
       </div>
-      {/* Right side: stats + theme + auth */}
-      <div className="flex flex-wrap gap-2 md:gap-4 justify-center items-center w-full md:w-auto">
-        {/* Stats (hidden on very small screens) */}
-        <div className="hidden sm:flex flex-row gap-4">
-          <h1 className="bg-white px-3 py-1 rounded-lg text-sm font-medium">
-            Target Days:
-            <span className="text-gray-700 font-bold ml-2">{target1}</span>
-          </h1>
-          <h1 className="bg-white px-3 py-1 rounded-lg text-sm font-medium">
-            Total:
-            <span className="text-gray-700 font-bold ml-2">
-              {amt2 > 0 ? amt2.toFixed(2) + "Rs" : "No Balance"}
+      
+      {/* Right side: stats + theme toggle + auth actions */}
+      <div className="flex flex-wrap gap-3 md:gap-4 justify-between md:justify-end items-center w-full md:w-auto">
+        {/* Statistics Badges */}
+        <div className="flex flex-wrap gap-2.5 items-center">
+          {/* Target */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-violet-50/50 dark:bg-violet-950/20 text-violet-700 dark:text-violet-300 border border-violet-100/30 dark:border-violet-900/20">
+            <Target className="w-3.5 h-3.5 text-violet-500" />
+            <span>Target: {target1}</span>
+          </div>
+
+          {/* Balance */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 border border-emerald-100/30 dark:border-emerald-900/20">
+            <Wallet className="w-3.5 h-3.5 text-emerald-500" />
+            <span>
+              Balance: {amt2 > 0 ? `${amt2.toFixed(0)} Rs` : "No Balance"}
             </span>
-          </h1>
-          <h3 className="text-gray-700 font-bold ml-2 bg-white px-3 py-1 rounded-lg text-sm">
-            Spent: {totalamt.toFixed(2)}Rs
-          </h3>
+          </div>
+
+          {/* Spent */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-rose-50/50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300 border border-rose-100/30 dark:border-rose-900/20">
+            <ArrowDownCircle className="w-3.5 h-3.5 text-rose-500" />
+            <span>Spent: {totalamt.toFixed(0)} Rs</span>
+          </div>
         </div>
 
-        {/* Theme toggle */}
-        <ThemeToggle />
+        {/* Divider */}
+        <div className="hidden lg:block h-6 w-px bg-slate-200 dark:bg-slate-800" />
 
-        {/* Auth buttons */}
-        <SignedOut>
-          <SignInButton className="px-3 py-1 bg-[#333333] text-white rounded-xl text-sm" />
-          <SignUpButton className="px-3 py-1 bg-[#333333] text-white rounded-xl text-sm" />
-        </SignedOut>
-
-        <SignedIn>
-          {/* Optional: test backend sync */}
+        {/* Interactive Actions */}
+        <div className="flex items-center gap-3 ml-auto md:ml-0">
+          {/* Inline Sun/Moon Toggler */}
           <button
-            onClick={callBackend}
-            className="px-3 py-1 bg-white text-gray-800 rounded-xl text-xs sm:text-sm mr-1"
+            onClick={handleToggleTheme}
+            className="rounded-xl border border-slate-200/80 p-2 text-slate-500 transition-all hover:bg-slate-100/80 hover:text-slate-900 active:scale-95 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-white cursor-pointer"
+            aria-label="Toggle theme"
           >
-            Sync
+            {theme === 'dark' ? (
+              <Sun className="h-4.5 w-4.5 text-amber-500 animate-pulse" />
+            ) : (
+              <Moon className="h-4.5 w-4.5 text-indigo-650" />
+            )}
           </button>
 
-          <span className="text-white mr-2 text-sm">
-            Welcome, {user?.fullName}
-          </span>
-          <UserButton />
-        </SignedIn>
+          {/* Clerk Auth Actions */}
+          <SignedOut>
+            <div className="flex gap-2">
+              <SignInButton className="px-3.5 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-950 rounded-xl text-xs font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-all active:scale-95 shadow-sm cursor-pointer" />
+              <SignUpButton className="px-3.5 py-1.5 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all active:scale-95 cursor-pointer" />
+            </div>
+          </SignedOut>
+          
+          <SignedIn>
+            <div className="flex items-center gap-3">
+              <span className="hidden sm:inline text-xs font-semibold text-slate-600 dark:text-slate-300">
+                Welcome, {user?.firstName || user?.fullName}
+              </span>
+              <UserButton 
+                afterSignOutUrl="/"
+                appearance={{
+                  elements: {
+                    avatarBox: "h-8 w-8 border border-slate-200 dark:border-slate-800"
+                  }
+                }}
+              />
+            </div>
+          </SignedIn>
+        </div>
       </div>
     </div>
   );
