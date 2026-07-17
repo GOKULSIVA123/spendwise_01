@@ -4,6 +4,9 @@
  */
 @import "tailwindcss";
 
+/* Enable class-based dark mode for Tailwind v4 */
+@variant dark (&:where(.dark, .dark *));
+
 /*
  * 2. This is your new "theme.extend" section
  * All your custom colors go here, inside @theme

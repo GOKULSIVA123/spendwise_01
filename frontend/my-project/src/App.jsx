@@ -9,11 +9,11 @@ import Home from "./pages/HomePage";
 function App() {
   return (
     <HashRouter>
-      <div className="min-h-screen flex flex-col bg-gray-50">
-        <Navbar className=''></Navbar>
-        <div className="flex flex-1">
-          <Sidebar></Sidebar>
-          <div className="flex-1 p-6 w-full">
+      <div className="min-h-screen flex bg-gray-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-250">
+        <Sidebar></Sidebar>
+        <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
+          <Navbar></Navbar>
+          <main className="flex-1 p-6 overflow-y-auto w-full">
             <Routes>
               <Route path="/" element={<Home></Home>}></Route>
               <Route
@@ -22,7 +22,7 @@ function App() {
               ></Route>
               <Route path="/Expense" element={<Expense></Expense>}></Route>
             </Routes>
-          </div>
+          </main>
         </div>
       </div>
     </HashRouter>
