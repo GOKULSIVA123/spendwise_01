@@ -17,10 +17,12 @@ import {
   CheckCircle
 } from "lucide-react";
 import { Expensecontent } from "../context/Expensecontent";
+import { Navcontent } from "../context/Navcontent";
 
 function Expense() {
   const navigate = useNavigate();
   const { addExpense, expenses } = useContext(Expensecontent);
+  const { addNotification, categoryBudgets } = useContext(Navcontent);
   
   const [formdata, setFormdata] = useState({
     title: "",
@@ -93,7 +95,20 @@ function Expense() {
     // Premium visual delay
     await new Promise((resolve) => setTimeout(resolve, 800));
     
+    // Check category limit threshold
+    const limit = parseFloat(categoryBudgets[formdata.category]) || 0;
+    const catExpenses = currentMonthExpenses.filter((exp) => exp.category === formdata.category);
+    const catSpent = catExpenses.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+    const newSpent = catSpent + parseFloat(formdata.amount);
+
     addExpense(formdata);
+
+    // Trigger global notifications
+    addNotification(`Spent ₹${parseFloat(formdata.amount).toFixed(0)} on ${formdata.category} ("${formdata.title}")`, "success");
+    if (limit > 0 && newSpent > limit) {
+      addNotification(`Warning: "${formdata.category}" category limit of ₹${limit} has been exceeded!`, "error");
+    }
+
     setIsSubmitting(false);
     setShowSuccess(true);
     
@@ -147,6 +162,20 @@ function Expense() {
       return dateStr;
     }
   };
+
+  // --- LOGIC: Filter expenses for the current month ---
+  const currentMonthExpenses = expenses.filter((e) => {
+    if (!e.date) return false;
+    const parts = e.date.split("-");
+    if (parts.length === 3) {
+      const year = parseInt(parts[0]);
+      const month = parseInt(parts[1]) - 1; // 0-indexed
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      return month === currentMonth && year === currentYear;
+    }
+    return false;
+  });
 
   return (
     <motion.div
@@ -373,17 +402,17 @@ function Expense() {
             <div>
               <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-200">Recent Transactions</h2>
               <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
-                Your Logged History
+                Current Month's History
               </p>
             </div>
 
             <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
-              {expenses.length === 0 ? (
+              {currentMonthExpenses.length === 0 ? (
                 <div className="text-center py-12 text-slate-400 dark:text-slate-500 italic text-xs">
-                  No transactions logged yet
+                  No transactions logged this month
                 </div>
               ) : (
-                expenses.slice(0, 5).map((exp) => {
+                currentMonthExpenses.slice(0, 5).map((exp) => {
                   // Find matching category object
                   const catObj = categories.find((c) => c.id === exp.category) || categories[5];
                   const CatIcon = catObj.icon;

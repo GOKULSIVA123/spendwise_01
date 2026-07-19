@@ -7,6 +7,7 @@ import {
   Home,
   Target,
   Wallet,
+  List,
 } from "lucide-react";
 import { Navcontent } from "../context/Navcontent";
 
@@ -18,6 +19,7 @@ function Sidebar() {
     { path: "/Dashboard", label: "Dashboard", icon: LayoutDashboard },
     { path: "/Expense", label: "Expenses", icon: Receipt },
     { path: "/Budget", label: "Budget", icon: Target },
+    { path: "/Transactions", label: "Transactions", icon: List },
   ];
 
   return (
