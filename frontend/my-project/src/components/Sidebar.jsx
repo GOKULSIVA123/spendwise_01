@@ -11,26 +11,13 @@ import {
 import { Navcontent } from "../context/Navcontent";
 
 function Sidebar() {
-  const { setNavamt } = useContext(Navcontent);
-  const [totalamt, setTotalamt] = useState("");
   const location = useLocation();
-
-  const handleSetBudget = (e) => {
-    e.preventDefault();
-    const newBudgetAmount = parseFloat(totalamt);
-    if (isNaN(newBudgetAmount) || newBudgetAmount < 0) {
-      return;
-    }
-    setNavamt(newBudgetAmount);
-    setTotalamt("");
-  };
-
-
 
   const links = [
     { path: "/", label: "Home", icon: Home },
     { path: "/Dashboard", label: "Dashboard", icon: LayoutDashboard },
     { path: "/Expense", label: "Expenses", icon: Receipt },
+    { path: "/Budget", label: "Budget", icon: Target },
   ];
 
   return (
@@ -89,30 +76,7 @@ function Sidebar() {
         })}
       </nav>
 
-      <div className="h-px bg-slate-100 dark:bg-slate-800 mx-2"></div>
 
-      {/* Forms Section */}
-      <div className="flex flex-col gap-6">
-        {/* Set Budget Form */}
-        <div className="flex flex-col gap-3 items-start">
-          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-500 uppercase tracking-widest px-2 flex items-center gap-1.5">
-            <Wallet size={12} className="text-teal-500" /> Set Total Budget
-          </label>
-          <input
-            onChange={(e) => setTotalamt(e.target.value)}
-            value={totalamt}
-            type="number"
-            placeholder="₹0.00"
-            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 dark:focus:border-teal-500 transition-all text-xs text-slate-800 dark:text-slate-200"
-          />
-          <button
-            onClick={handleSetBudget}
-            className="w-full bg-teal-600 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-teal-700 transition-all shadow-md shadow-teal-100/50 dark:shadow-none cursor-pointer"
-          >
-            Update Budget
-          </button>
-        </div>
-      </div>
 
       {/* Footer Branding */}
       <div className="mt-auto pt-6 border-t border-slate-100 dark:border-slate-800">

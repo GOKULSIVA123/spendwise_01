@@ -22,7 +22,21 @@ function Navbar() {
   const { isSignedIn } = useAuth();
   const location = useLocation();
 
-  const totalamt = expenses.reduce((accum, current) => {
+  const currentMonthExpenses = expenses.filter((e) => {
+    if (!e.date) return false;
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const parts = e.date.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0]);
+      const month = parseInt(parts[1]) - 1;
+      return month === currentMonth && year === currentYear;
+    }
+    const d = new Date(e.date);
+    return !isNaN(d.getTime()) && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  });
+
+  const totalamt = currentMonthExpenses.reduce((accum, current) => {
     const amt1 = parseFloat(current.amount) || 0;
     return amt1 + accum;
   }, 0);
@@ -37,6 +51,8 @@ function Navbar() {
         return "Analytics Dashboard";
       case "/Expense":
         return "Expenses Log";
+      case "/Budget":
+        return "Budget Planner";
       default:
         return "SpendWise";
     }
