@@ -1,6 +1,7 @@
 import React from "react";
 import { HashRouter, Routes, Route } from "react-router-dom";
 import { SignedIn, SignedOut } from "@clerk/clerk-react";
+import { Toaster } from "sonner";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
 import Expense from "./pages/Expense";
@@ -8,10 +9,12 @@ import Dashboard from "./pages/Dashboard";
 import Home from "./pages/HomePage";
 import AuthPage from "./pages/AuthPage";
 import Budget from "./pages/Budget";
+import Transactions from "./pages/Transactions";
 
 function App() {
   return (
     <HashRouter>
+      <Toaster position="top-right" richColors closeButton />
       {/* 1. If user is signed out, show the beautiful separate signin/signup page */}
       <SignedOut>
         <AuthPage />
@@ -29,6 +32,7 @@ function App() {
                 <Route path="/Dashboard" element={<Dashboard />} />
                 <Route path="/Expense" element={<Expense />} />
                 <Route path="/Budget" element={<Budget />} />
+                <Route path="/Transactions" element={<Transactions />} />
               </Routes>
             </main>
           </div>

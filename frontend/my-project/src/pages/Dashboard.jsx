@@ -1,4 +1,5 @@
 import React, { useContext, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Expensecontent } from "../context/Expensecontent";
 import { Navcontent } from "../context/Navcontent";
 import {
@@ -24,6 +25,7 @@ import {
   CreditCard,
   Sparkles,
   Target,
+  ArrowRight,
 } from "lucide-react";
 
 // --- 1. Register ChartJS Components ---
@@ -38,6 +40,7 @@ ChartJS.register(
 );
 
 function Dashboard() {
+  const navigate = useNavigate();
   const { expenses } = useContext(Expensecontent);
   const { navamt } = useContext(Navcontent);
   const [trendRange, setTrendRange] = useState("daily"); // 'daily' | 'weekly' | 'monthly' | 'yearly'
@@ -249,7 +252,8 @@ function Dashboard() {
   const trendChartData = useMemo(() => {
     const todayDate = new Date();
     const labels = [];
-    const data = [];
+    const expenseData = [];
+    const incomeData = [];
 
     const parseExpenseDate = (dateStr) => {
       if (!dateStr) return null;
@@ -297,7 +301,8 @@ function Dashboard() {
                    parsed.day === d.getDate();
           })
           .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
-        data.push(daySpend);
+        expenseData.push(daySpend);
+        incomeData.push(navamt);
       }
     } else if (trendRange === "weekly") {
       for (let i = 3; i >= 0; i--) {
@@ -319,7 +324,8 @@ function Dashboard() {
             return expTs >= startTs && expTs <= endTs;
           })
           .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
-        data.push(weekSpend);
+        expenseData.push(weekSpend);
+        incomeData.push(navamt);
       }
     } else if (trendRange === "monthly") {
       for (let i = 5; i >= 0; i--) {
@@ -338,7 +344,8 @@ function Dashboard() {
             return parsed && parsed.month === targetMonth && parsed.year === targetYear;
           })
           .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
-        data.push(monthSpend);
+        expenseData.push(monthSpend);
+        incomeData.push(navamt);
       }
     } else if (trendRange === "yearly") {
       for (let i = 2; i >= 0; i--) {
@@ -351,68 +358,32 @@ function Dashboard() {
             return parsed && parsed.year === targetYear;
           })
           .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
-        data.push(yearSpend);
+        expenseData.push(yearSpend);
+        incomeData.push(navamt * 12);
       }
     }
 
-    return { labels, data };
-  }, [expenses, trendRange, trendSubValue]);
-
-  // Compute colors dynamically to highlight the active floating sub-option (visual orbit concept)
-  const getBarColors = () => {
-    const defaultColor = trendRange === "daily"
-      ? "#22c55e"
-      : trendRange === "weekly"
-      ? "#3b82f6"
-      : trendRange === "monthly"
-      ? "#8b5cf6"
-      : "#ec4899";
-
-    const highlightColor = "#f59e0b"; // Gold highlight representing active filter state
-
-    return trendChartData.labels.map((label) => {
-      if (trendRange === "weekly" && label === trendSubValue) {
-        return highlightColor;
-      }
-      if (trendRange === "monthly" && label === trendSubValue) {
-        return highlightColor;
-      }
-      if (trendRange === "yearly" && label === trendSubValue) {
-        return highlightColor;
-      }
-      if (trendRange === "daily") {
-        // Highlight the selected day's bar by comparing dates
-        if (trendSubValue) {
-          const d = new Date(trendSubValue);
-          const dayLabel = d.toLocaleDateString("en-US", { weekday: "short", day: "numeric" });
-          if (label === dayLabel) return highlightColor;
-        }
-      }
-      return defaultColor;
-    });
-  };
+    return { labels, expenseData, incomeData };
+  }, [expenses, trendRange, trendSubValue, navamt]);
 
   const trendData = {
     labels: trendChartData.labels,
     datasets: [
       {
-        label: trendRange === "daily"
-          ? "Daily Spend"
-          : trendRange === "weekly"
-          ? "Weekly Spend"
-          : trendRange === "monthly"
-          ? "Monthly Spend"
-          : "Yearly Spend",
-        data: trendChartData.data,
-        backgroundColor: getBarColors(),
-        borderRadius: 6,
-        barThickness: trendRange === "daily"
-          ? 12
-          : trendRange === "weekly"
-          ? 24
-          : trendRange === "monthly"
-          ? 36
-          : 48,
+        label: "Income Budget",
+        data: trendChartData.incomeData,
+        backgroundColor: "#10b981", // Emerald 500
+        borderRadius: 4,
+        barPercentage: 0.85,
+        categoryPercentage: 0.85,
+      },
+      {
+        label: "Actual Expense",
+        data: trendChartData.expenseData,
+        backgroundColor: "#f43f5e", // Rose 500
+        borderRadius: 4,
+        barPercentage: 0.85,
+        categoryPercentage: 0.85,
       },
     ],
   };
@@ -420,10 +391,28 @@ function Dashboard() {
   const trendOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: { legend: { display: false }, title: { display: false } },
+    plugins: { 
+      legend: { 
+        display: true, 
+        position: "top",
+        labels: {
+          font: { family: "Poppins, sans-serif", size: 9, weight: "bold" },
+          color: "#94a3b8",
+          boxWidth: 10,
+        }
+      }, 
+      title: { display: false } 
+    },
     scales: {
-      y: { display: false },
-      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { 
+        display: true,
+        grid: { color: "rgba(148, 163, 184, 0.05)" },
+        ticks: { font: { size: 9 }, color: "#94a3b8" }
+      },
+      x: { 
+        grid: { display: false }, 
+        ticks: { font: { size: 9 }, color: "#94a3b8" } 
+      },
     },
   };
 
@@ -628,8 +617,16 @@ function Dashboard() {
                   Recent Activity
                 </p>
               </div>
-              <div className="bg-slate-50 dark:bg-slate-950 p-2 rounded-lg text-slate-600 dark:text-slate-400">
-                <CreditCard size={20} />
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => navigate("/Transactions")}
+                  className="px-3.5 py-1.5 bg-teal-50 dark:bg-teal-950/20 text-teal-600 dark:text-teal-400 border border-teal-100 dark:border-teal-900/30 hover:bg-teal-100/50 dark:hover:bg-teal-900/20 text-[10px] font-extrabold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center gap-1"
+                >
+                  View All <ArrowRight size={12} />
+                </button>
+                <div className="bg-slate-50 dark:bg-slate-950 p-2 rounded-lg text-slate-600 dark:text-slate-400">
+                  <CreditCard size={20} />
+                </div>
               </div>
             </div>
 
@@ -709,6 +706,47 @@ function Dashboard() {
                 </p>
               )}
             </div>
+
+            {/* Category Spending Summary List */}
+            {currentMonthExpenses.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800/80 space-y-4">
+                <h4 className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest">
+                  Category Spending Summary
+                </h4>
+                <div className="space-y-3.5">
+                  {Object.entries(categoryTotals).map(([category, amount]) => {
+                    const percentage = totalamt > 0 ? (amount / totalamt) * 100 : 0;
+                    
+                    // Simple helper to match color classes
+                    let colorClass = "bg-slate-500";
+                    if (category === "Food") colorClass = "bg-emerald-500";
+                    else if (category === "Transport") colorClass = "bg-blue-500";
+                    else if (category === "Shopping") colorClass = "bg-purple-500";
+                    else if (category === "Entertainment") colorClass = "bg-pink-500";
+                    else if (category === "Utilities") colorClass = "bg-amber-500";
+
+                    return (
+                      <div key={category} className="space-y-1">
+                        <div className="flex justify-between items-center text-xs font-bold">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2.5 h-2.5 rounded-full ${colorClass}`} />
+                            <span className="text-slate-700 dark:text-slate-300">{category}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-800 dark:text-slate-200">{formatCurrency(amount)}</span>
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">({percentage.toFixed(0)}%)</span>
+                          </div>
+                        </div>
+                        {/* Miniature Progress Bar */}
+                        <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${colorClass}`} style={{ width: `${percentage}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </motion.div>
 
           {/* Daily Tips Banner */}

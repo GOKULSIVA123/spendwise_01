@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Navcontent } from "../context/Navcontent";
 import { Expensecontent } from "../context/Expensecontent";
+import { toast } from "sonner";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -40,7 +41,7 @@ ChartJS.register(
 );
 
 function Budget() {
-  const { navamt, setNavamt, categoryBudgets, setCategoryBudgets } = useContext(Navcontent);
+  const { navamt, setNavamt, categoryBudgets, setCategoryBudgets, addNotification } = useContext(Navcontent);
   const { expenses } = useContext(Expensecontent);
 
   // Local state for forms
@@ -54,7 +55,7 @@ function Budget() {
     Other: categoryBudgets.Other?.toString() || "0",
   });
 
-  const [notification, setNotification] = useState(null);
+
 
   // Categories definitions
   const categoriesList = [
@@ -66,13 +67,7 @@ function Budget() {
     { id: "Other", label: "Other", icon: HelpCircle, iconColor: "text-slate-600 dark:text-slate-400", bgColor: "bg-slate-100 dark:bg-slate-800/40" },
   ];
 
-  // Helper to show visual toast
-  const triggerNotification = (message, type = "success") => {
-    setNotification({ message, type });
-    setTimeout(() => {
-      setNotification(null);
-    }, 3000);
-  };
+
 
   // --- LOGIC: Filter expenses for the current month ---
   const currentMonthExpenses = useMemo(() => {
@@ -102,30 +97,40 @@ function Budget() {
   }, [currentMonthExpenses]);
 
   // --- Save Actions ---
-  const handleSaveIncome = (e) => {
+  const handleSaveIncome = async (e) => {
     e.preventDefault();
     const parsedIncome = parseFloat(incomeInput);
     if (isNaN(parsedIncome) || parsedIncome < 0) {
-      triggerNotification("Please enter a valid monthly income.", "error");
+      toast.error("Please enter a valid monthly income.");
       return;
     }
+    
+    const toastId = toast.loading("Saving Monthly Income...");
+    await new Promise((resolve) => setTimeout(resolve, 800));
+
     setNavamt(parsedIncome);
-    triggerNotification("Monthly Income successfully set!");
+    toast.success(`Set Monthly Income budget limit to ₹${parsedIncome.toLocaleString()}`, { id: toastId });
+    addNotification(`Set Monthly Income budget limit to ₹${parsedIncome.toLocaleString()}`, "success");
   };
 
-  const handleSaveBudgets = (e) => {
+  const handleSaveBudgets = async (e) => {
     e.preventDefault();
     const newBudgets = {};
     for (const cat of Object.keys(tempBudgets)) {
       const parsedVal = parseFloat(tempBudgets[cat]);
       if (isNaN(parsedVal) || parsedVal < 0) {
-        triggerNotification(`Please enter a valid limit for ${cat}.`, "error");
+        toast.error(`Please enter a valid limit for ${cat}.`);
         return;
       }
       newBudgets[cat] = parsedVal;
     }
+
+    const toastId = toast.loading("Syncing budget limits...");
+    await new Promise((resolve) => setTimeout(resolve, 800));
+
     setCategoryBudgets(newBudgets);
-    triggerNotification("Category budgets successfully saved!");
+    toast.success("Saved updated Category Budget limits", { id: toastId });
+    addNotification("Saved updated Category Budget limits", "success");
   };
 
   const handleAdjustBudget = (category, amount) => {
@@ -221,28 +226,7 @@ function Budget() {
       transition={{ duration: 0.35, ease: "easeOut" }}
       className="p-6 font-sans bg-slate-50 dark:bg-slate-950 min-h-screen w-full text-slate-800 dark:text-slate-100 transition-colors"
     >
-      {/* Notifications */}
-      <AnimatePresence>
-        {notification && (
-          <motion.div
-            initial={{ opacity: 0, y: -50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.9 }}
-            className={`fixed top-6 right-6 z-50 flex items-center gap-2.5 px-5 py-3 rounded-2xl shadow-xl border text-xs font-bold ${
-              notification.type === "error"
-                ? "bg-rose-50 border-rose-100 text-rose-700 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400"
-                : "bg-emerald-50 border-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400"
-            }`}
-          >
-            {notification.type === "error" ? (
-              <AlertTriangle size={16} className="shrink-0 text-rose-500" />
-            ) : (
-              <CheckCircle size={16} className="shrink-0 text-emerald-500" />
-            )}
-            <span>{notification.message}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
 
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
