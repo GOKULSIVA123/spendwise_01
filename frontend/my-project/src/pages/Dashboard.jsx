@@ -40,23 +40,63 @@ ChartJS.register(
 function Dashboard() {
   const { expenses } = useContext(Expensecontent);
   const { navamt } = useContext(Navcontent);
+  const [trendRange, setTrendRange] = useState("daily"); // 'daily' | 'weekly' | 'monthly' | 'yearly'
+  const [trendSubValue, setTrendSubValue] = useState(new Date().toISOString().slice(0, 10));
+
+  const handleRangeChange = (newRange) => {
+    setTrendRange(newRange);
+    if (newRange === "daily") {
+      setTrendSubValue(new Date().toISOString().slice(0, 10));
+    } else if (newRange === "weekly") {
+      setTrendSubValue("Week 4");
+    } else if (newRange === "monthly") {
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      setTrendSubValue(monthNames[new Date().getMonth()]);
+    } else if (newRange === "yearly") {
+      setTrendSubValue(new Date().getFullYear().toString());
+    }
+  };
 
   // --- 2. CALCULATIONS ---
-  const totalamt = expenses.reduce((accum, curr) => {
-    return accum + (parseFloat(curr.amount) || 0);
-  }, 0);
+  const currentMonthExpenses = useMemo(() => {
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    return expenses.filter((e) => {
+      if (!e.date) return false;
+      const parts = e.date.split('-');
+      if (parts.length === 3) {
+        const year = parseInt(parts[0]);
+        const month = parseInt(parts[1]) - 1;
+        return month === currentMonth && year === currentYear;
+      }
+      const d = new Date(e.date);
+      return !isNaN(d.getTime()) && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    });
+  }, [expenses]);
+
+  const totalamt = useMemo(() => {
+    return currentMonthExpenses.reduce((accum, curr) => {
+      return accum + (parseFloat(curr.amount) || 0);
+    }, 0);
+  }, [currentMonthExpenses]);
 
   const remainingBalance = navamt - totalamt;
 
-  const categoryTotals = expenses.reduce((acc, curr) => {
-    const cat = curr.category || "Other";
-    const amt = parseFloat(curr.amount) || 0;
-    acc[cat] = (acc[cat] || 0) + amt;
-    return acc;
-  }, {});
+  const categoryTotals = useMemo(() => {
+    return currentMonthExpenses.reduce((acc, curr) => {
+      const cat = curr.category || "Other";
+      const amt = parseFloat(curr.amount) || 0;
+      acc[cat] = (acc[cat] || 0) + amt;
+      return acc;
+    }, {});
+  }, [currentMonthExpenses]);
 
-  const labels = Object.keys(categoryTotals);
-  const dataValues = Object.values(categoryTotals);
+  const labels = useMemo(() => Object.keys(categoryTotals), [categoryTotals]);
+  const dataValues = useMemo(() => Object.values(categoryTotals), [categoryTotals]);
+
+  const currentMonthName = useMemo(() => {
+    return new Date().toLocaleString("en-US", { month: "long" });
+  }, []);
 
   const barData = {
     labels: labels,
@@ -131,37 +171,248 @@ function Dashboard() {
     (expense) => expense.date === new Date().toISOString().slice(0, 10)
   );
 
-  // D) Last 7 Days Trend
-  const last7DaysData = useMemo(() => {
+  // D) Filtered Expenses for Transactions List based on Floating Filter Node
+  const filteredExpenses = useMemo(() => {
+    if (!trendSubValue) return expenses;
+
+    const parseExpenseDate = (dateStr) => {
+      if (!dateStr) return null;
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        return {
+          year: parseInt(parts[0]),
+          month: parseInt(parts[1]) - 1,
+          day: parseInt(parts[2])
+        };
+      }
+      const d = new Date(dateStr);
+      return isNaN(d.getTime()) ? null : {
+        year: d.getFullYear(),
+        month: d.getMonth(),
+        day: d.getDate()
+      };
+    };
+
+    if (trendRange === "daily") {
+      return expenses.filter((e) => e.date === trendSubValue);
+    }
+
+    if (trendRange === "weekly") {
+      const todayDate = new Date();
+      let offsetIndex = 3; // default Week 4 (current)
+      if (trendSubValue === "Week 1") offsetIndex = 0;
+      else if (trendSubValue === "Week 2") offsetIndex = 1;
+      else if (trendSubValue === "Week 3") offsetIndex = 2;
+      else if (trendSubValue === "Week 4") offsetIndex = 3;
+
+      const startDay = new Date();
+      startDay.setDate(todayDate.getDate() - ((3 - offsetIndex) * 7 + 6));
+      const endDay = new Date();
+      endDay.setDate(todayDate.getDate() - ((3 - offsetIndex) * 7));
+
+      const startTs = new Date(startDay.getFullYear(), startDay.getMonth(), startDay.getDate(), 0, 0, 0, 0).getTime();
+      const endTs = new Date(endDay.getFullYear(), endDay.getMonth(), endDay.getDate(), 23, 59, 59, 999).getTime();
+
+      return expenses.filter((e) => {
+        const parsed = parseExpenseDate(e.date);
+        if (!parsed) return false;
+        const expTs = new Date(parsed.year, parsed.month, parsed.day).getTime();
+        return expTs >= startTs && expTs <= endTs;
+      });
+    }
+
+    if (trendRange === "monthly") {
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const targetMonth = monthNames.indexOf(trendSubValue);
+      if (targetMonth === -1) return expenses;
+      const targetYear = new Date().getFullYear();
+
+      return expenses.filter((e) => {
+        const parsed = parseExpenseDate(e.date);
+        return parsed && parsed.month === targetMonth && parsed.year === targetYear;
+      });
+    }
+
+    if (trendRange === "yearly") {
+      const targetYear = parseInt(trendSubValue);
+      if (isNaN(targetYear)) return expenses;
+      return expenses.filter((e) => {
+        const parsed = parseExpenseDate(e.date);
+        return parsed && parsed.year === targetYear;
+      });
+    }
+
+    return expenses;
+  }, [expenses, trendRange, trendSubValue]);
+
+  // E) Multi-option Trend Data (Daily, Weekly, Monthly, Yearly)
+  const trendChartData = useMemo(() => {
     const todayDate = new Date();
     const labels = [];
     const data = [];
 
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(todayDate.getDate() - i);
-      const dateStr = d.toISOString().slice(0, 10);
+    const parseExpenseDate = (dateStr) => {
+      if (!dateStr) return null;
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        return {
+          year: parseInt(parts[0]),
+          month: parseInt(parts[1]) - 1,
+          day: parseInt(parts[2])
+        };
+      }
+      const d = new Date(dateStr);
+      return isNaN(d.getTime()) ? null : {
+        year: d.getFullYear(),
+        month: d.getMonth(),
+        day: d.getDate()
+      };
+    };
 
-      const dayLabel = d.toLocaleDateString("en-US", { weekday: "short" });
-      labels.push(dayLabel);
+    if (trendRange === "daily") {
+      // Daily defaults to selected day trendSubValue, displaying 7 days leading up to it
+      let baseDate = new Date();
+      if (trendSubValue) {
+        const parts = trendSubValue.split('-');
+        if (parts.length === 3) {
+          baseDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        } else {
+          baseDate = new Date(trendSubValue);
+        }
+      }
+      if (isNaN(baseDate.getTime())) baseDate = new Date();
 
-      const daySpend = expenses
-        .filter((e) => e.date === dateStr)
-        .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
-      data.push(daySpend);
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(baseDate);
+        d.setDate(baseDate.getDate() - i);
+        const dayLabel = d.toLocaleDateString("en-US", { weekday: "short", day: "numeric" });
+        labels.push(dayLabel);
+
+        const daySpend = expenses
+          .filter((e) => {
+            const parsed = parseExpenseDate(e.date);
+            return parsed &&
+                   parsed.year === d.getFullYear() &&
+                   parsed.month === d.getMonth() &&
+                   parsed.day === d.getDate();
+          })
+          .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+        data.push(daySpend);
+      }
+    } else if (trendRange === "weekly") {
+      for (let i = 3; i >= 0; i--) {
+        const startDay = new Date();
+        startDay.setDate(todayDate.getDate() - (i * 7 + 6));
+        const endDay = new Date();
+        endDay.setDate(todayDate.getDate() - (i * 7));
+
+        labels.push(`Week ${4 - i}`);
+
+        const startTs = new Date(startDay.getFullYear(), startDay.getMonth(), startDay.getDate(), 0, 0, 0, 0).getTime();
+        const endTs = new Date(endDay.getFullYear(), endDay.getMonth(), endDay.getDate(), 23, 59, 59, 999).getTime();
+
+        const weekSpend = expenses
+          .filter((e) => {
+            const parsed = parseExpenseDate(e.date);
+            if (!parsed) return false;
+            const expTs = new Date(parsed.year, parsed.month, parsed.day).getTime();
+            return expTs >= startTs && expTs <= endTs;
+          })
+          .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+        data.push(weekSpend);
+      }
+    } else if (trendRange === "monthly") {
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(1); // avoid 31st overflow bug
+        d.setMonth(todayDate.getMonth() - i);
+        const monthLabel = d.toLocaleDateString("en-US", { month: "short" });
+        labels.push(monthLabel);
+
+        const targetMonth = d.getMonth();
+        const targetYear = d.getFullYear();
+
+        const monthSpend = expenses
+          .filter((e) => {
+            const parsed = parseExpenseDate(e.date);
+            return parsed && parsed.month === targetMonth && parsed.year === targetYear;
+          })
+          .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+        data.push(monthSpend);
+      }
+    } else if (trendRange === "yearly") {
+      for (let i = 2; i >= 0; i--) {
+        const targetYear = todayDate.getFullYear() - i;
+        labels.push(targetYear.toString());
+
+        const yearSpend = expenses
+          .filter((e) => {
+            const parsed = parseExpenseDate(e.date);
+            return parsed && parsed.year === targetYear;
+          })
+          .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+        data.push(yearSpend);
+      }
     }
+
     return { labels, data };
-  }, [expenses]);
+  }, [expenses, trendRange, trendSubValue]);
+
+  // Compute colors dynamically to highlight the active floating sub-option (visual orbit concept)
+  const getBarColors = () => {
+    const defaultColor = trendRange === "daily"
+      ? "#22c55e"
+      : trendRange === "weekly"
+      ? "#3b82f6"
+      : trendRange === "monthly"
+      ? "#8b5cf6"
+      : "#ec4899";
+
+    const highlightColor = "#f59e0b"; // Gold highlight representing active filter state
+
+    return trendChartData.labels.map((label) => {
+      if (trendRange === "weekly" && label === trendSubValue) {
+        return highlightColor;
+      }
+      if (trendRange === "monthly" && label === trendSubValue) {
+        return highlightColor;
+      }
+      if (trendRange === "yearly" && label === trendSubValue) {
+        return highlightColor;
+      }
+      if (trendRange === "daily") {
+        // Highlight the selected day's bar by comparing dates
+        if (trendSubValue) {
+          const d = new Date(trendSubValue);
+          const dayLabel = d.toLocaleDateString("en-US", { weekday: "short", day: "numeric" });
+          if (label === dayLabel) return highlightColor;
+        }
+      }
+      return defaultColor;
+    });
+  };
 
   const trendData = {
-    labels: last7DaysData.labels,
+    labels: trendChartData.labels,
     datasets: [
       {
-        label: "Daily Spend",
-        data: last7DaysData.data,
-        backgroundColor: "#22c55e",
+        label: trendRange === "daily"
+          ? "Daily Spend"
+          : trendRange === "weekly"
+          ? "Weekly Spend"
+          : trendRange === "monthly"
+          ? "Monthly Spend"
+          : "Yearly Spend",
+        data: trendChartData.data,
+        backgroundColor: getBarColors(),
         borderRadius: 6,
-        barThickness: 12,
+        barThickness: trendRange === "daily"
+          ? 12
+          : trendRange === "weekly"
+          ? 24
+          : trendRange === "monthly"
+          ? 36
+          : 48,
       },
     ],
   };
@@ -227,16 +478,18 @@ function Dashboard() {
         </div>
       </motion.div>
 
+
+
       {/* --- Stat Cards --- */}
       <motion.div
         variants={itemVariants}
         className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
       >
-        {/* Total Budget */}
+        {/* Monthly Budget */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800/80 flex items-center justify-between group transition-all hover:shadow-md">
           <div className="space-y-1">
             <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
-              Total Budget
+              Monthly Budget
             </h3>
             <p className="text-3xl font-extrabold tracking-tight text-teal-600 dark:text-teal-400">
               {formatCurrency(navamt)}
@@ -247,11 +500,11 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* Total Spent */}
+        {/* Monthly Spent */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800/80 flex items-center justify-between group transition-all hover:shadow-md">
           <div className="space-y-1">
             <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
-              Total Spent
+              Monthly Spent
             </h3>
             <p className="text-3xl font-extrabold tracking-tight text-rose-500 dark:text-rose-400">
               {formatCurrency(totalamt)}
@@ -266,7 +519,7 @@ function Dashboard() {
         <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800/80 flex items-center justify-between group transition-all hover:shadow-md">
           <div className="space-y-1">
             <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
-              Remaining
+              Remaining Balance
             </h3>
             <p className="text-3xl font-extrabold tracking-tight text-emerald-500 dark:text-emerald-400">
               {formatCurrency(remainingBalance)}
@@ -281,25 +534,82 @@ function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* --- Main Content Left (2 Cols) --- */}
         <div className="lg:col-span-2 flex flex-col gap-8">
-          {/* Last 7 Days Trend */}
+          {/* Spending Trend Card */}
           <motion.div
             variants={itemVariants}
             className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800/80 relative overflow-hidden"
           >
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
               <div>
                 <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">
-                  Weekly Trend
+                  Spending Trend
                 </h2>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">
-                  Last 7 Days Spending
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
+                  {trendRange === "daily" ? `Last 7 Days (Focus: ${trendSubValue})` : trendRange === "weekly" ? `Last 4 Weeks (Focus: ${trendSubValue})` : trendRange === "monthly" ? `Last 6 Months (Focus: ${trendSubValue})` : `Last 3 Years (Focus: ${trendSubValue})`}
                 </p>
               </div>
-              <div className="bg-emerald-50 dark:bg-emerald-950/20 p-2 rounded-lg text-emerald-600 dark:text-emerald-400">
-                <TrendingUp size={20} />
+
+              {/* Compact Filters in Top-Right */}
+              <div className="flex flex-wrap items-center gap-3 bg-slate-50 dark:bg-slate-950 p-2 rounded-2xl border border-slate-100/80 dark:border-slate-800/80 shadow-sm self-start lg:self-center">
+                {/* Timeframe Selector Pills */}
+                <div className="flex bg-white dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200/50 dark:border-slate-800/80 shadow-sm">
+                  {[
+                    { id: "yearly", label: "Year" },
+                    { id: "monthly", label: "Month" },
+                    { id: "weekly", label: "Week" },
+                    { id: "daily", label: "Daily" },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => handleRangeChange(tab.id)}
+                      className={`px-2.5 py-1 rounded text-[9px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+                        trendRange === tab.id
+                          ? "bg-teal-600 text-white font-bold"
+                          : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Vertical Divider */}
+                <div className="hidden sm:block w-[1px] h-4 bg-slate-200 dark:bg-slate-800"></div>
+
+                {/* Sub-option Selection Area */}
+                <div className="flex items-center min-w-[90px]">
+                  {trendRange === "daily" ? (
+                    <input
+                      type="date"
+                      value={trendSubValue}
+                      onChange={(e) => setTrendSubValue(e.target.value)}
+                      className="px-2 py-0.5 bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/80 rounded text-[9px] font-bold text-slate-700 dark:text-slate-200 cursor-pointer outline-none focus:ring-1 focus:ring-teal-500"
+                    />
+                  ) : (
+                    <select
+                      value={trendSubValue}
+                      onChange={(e) => setTrendSubValue(e.target.value)}
+                      className="w-full px-2 py-0.5 bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/80 rounded text-[9px] font-bold text-slate-700 dark:text-slate-200 cursor-pointer outline-none focus:ring-1 focus:ring-teal-500 max-h-[30px]"
+                    >
+                      {(trendRange === "yearly"
+                        ? ["2024", "2025", "2026"]
+                        : trendRange === "monthly"
+                        ? ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+                        : ["Week 1", "Week 2", "Week 3", "Week 4"]
+                      ).map((subOpt) => (
+                        <option key={subOpt} value={subOpt} className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
+                          {subOpt}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
               </div>
             </div>
-            <div className="h-[200px] w-full">
+
+            {/* Chart (Now 100% width, preventing ChartJS squeezing) */}
+            <div className="h-[220px] w-full mt-4">
               <Bar data={trendData} options={trendOptions} />
             </div>
           </motion.div>
@@ -324,12 +634,12 @@ function Dashboard() {
             </div>
 
             <div className="max-h-[300px] overflow-y-auto pr-2 space-y-3 custom-scrollbar">
-              {expenses.length === 0 ? (
+              {filteredExpenses.length === 0 ? (
                 <div className="text-center py-10 text-slate-400 dark:text-slate-500 italic text-xs">
                   No transactions found
                 </div>
               ) : (
-                expenses.map((exp) => (
+                filteredExpenses.map((exp) => (
                   <div
                     key={exp.id}
                     className="flex items-center justify-between p-3 hover:bg-slate-50 dark:hover:bg-slate-950 rounded-xl transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-800/50"
@@ -383,7 +693,7 @@ function Dashboard() {
               <div>
                 <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">Categories</h2>
                 <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">
-                  All Time Breakdown
+                  {currentMonthName} Breakdown
                 </p>
               </div>
               <div className="bg-teal-50 dark:bg-teal-950/20 p-2 rounded-lg text-teal-600 dark:text-teal-400">
@@ -391,11 +701,11 @@ function Dashboard() {
               </div>
             </div>
             <div className="h-[250px] flex items-center justify-center">
-              {expenses.length > 0 ? (
+              {currentMonthExpenses.length > 0 ? (
                 <Doughnut data={doughnutData} options={doughnutOptions} />
               ) : (
                 <p className="text-xs text-slate-400 dark:text-slate-500 font-medium text-center">
-                  No data available
+                  No data available for this month
                 </p>
               )}
             </div>

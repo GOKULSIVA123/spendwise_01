@@ -24,7 +24,21 @@ function HomePage() {
   const [loadingPlan, setLoadingPlan] = useState(false);
   const [aiResult, setAiResult] = useState(null);
   // --- LOGIC: Calculation of Financial Status ---
-  const spent = expenses.reduce((accum, curr) => {
+  const currentMonthExpenses = expenses.filter((e) => {
+    if (!e.date) return false;
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const parts = e.date.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0]);
+      const month = parseInt(parts[1]) - 1;
+      return month === currentMonth && year === currentYear;
+    }
+    const d = new Date(e.date);
+    return !isNaN(d.getTime()) && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  });
+
+  const spent = currentMonthExpenses.reduce((accum, curr) => {
     const val = parseFloat(curr.amount) || 0;
     return val + accum;
   }, 0);
@@ -95,11 +109,11 @@ function HomePage() {
 
         {/* --- 2. Summary Cards Grid --- */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Total Budget */}
+          {/* Monthly Budget */}
           <div className="bg-white dark:bg-slate-900 p-7 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800/80 flex items-center justify-between group transition-all hover:shadow-md">
             <div className="space-y-1">
               <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
-                Total Budget
+                Monthly Budget
               </h3>
               <p className="text-2xl font-extrabold tracking-tight text-teal-600 dark:text-teal-400">
                 {formatCurrency(navamt)}
@@ -110,11 +124,11 @@ function HomePage() {
             </div>
           </div>
 
-          {/* Total Spent */}
+          {/* Monthly Spent */}
           <div className="bg-white dark:bg-slate-900 p-7 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800/80 flex items-center justify-between group transition-all hover:shadow-md">
             <div className="space-y-1">
               <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
-                Total Spent
+                Monthly Spent
               </h3>
               <p className="text-2xl font-extrabold tracking-tight text-rose-500 dark:text-rose-400">
                 {formatCurrency(spent)}
@@ -129,7 +143,7 @@ function HomePage() {
           <div className="bg-white dark:bg-slate-900 p-7 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800/80 flex items-center justify-between group transition-all hover:shadow-md">
             <div className="space-y-1">
               <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
-                Remaining
+                Remaining Balance
               </h3>
               <p className="text-2xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400">
                 {formatCurrency(rem)}
