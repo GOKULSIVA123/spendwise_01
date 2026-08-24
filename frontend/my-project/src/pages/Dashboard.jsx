@@ -36,7 +36,7 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  ArcElement
+  ArcElement,
 );
 
 function Dashboard() {
@@ -44,7 +44,9 @@ function Dashboard() {
   const { expenses } = useContext(Expensecontent);
   const { navamt } = useContext(Navcontent);
   const [trendRange, setTrendRange] = useState("daily"); // 'daily' | 'weekly' | 'monthly' | 'yearly'
-  const [trendSubValue, setTrendSubValue] = useState(new Date().toISOString().slice(0, 10));
+  const [trendSubValue, setTrendSubValue] = useState(
+    new Date().toISOString().slice(0, 10),
+  );
 
   const handleRangeChange = (newRange) => {
     setTrendRange(newRange);
@@ -53,7 +55,20 @@ function Dashboard() {
     } else if (newRange === "weekly") {
       setTrendSubValue("Week 4");
     } else if (newRange === "monthly") {
-      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const monthNames = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
       setTrendSubValue(monthNames[new Date().getMonth()]);
     } else if (newRange === "yearly") {
       setTrendSubValue(new Date().getFullYear().toString());
@@ -66,14 +81,18 @@ function Dashboard() {
     const currentYear = new Date().getFullYear();
     return expenses.filter((e) => {
       if (!e.date) return false;
-      const parts = e.date.split('-');
+      const parts = e.date.split("-");
       if (parts.length === 3) {
         const year = parseInt(parts[0]);
         const month = parseInt(parts[1]) - 1;
         return month === currentMonth && year === currentYear;
       }
       const d = new Date(e.date);
-      return !isNaN(d.getTime()) && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      return (
+        !isNaN(d.getTime()) &&
+        d.getMonth() === currentMonth &&
+        d.getFullYear() === currentYear
+      );
     });
   }, [expenses]);
 
@@ -95,7 +114,10 @@ function Dashboard() {
   }, [currentMonthExpenses]);
 
   const labels = useMemo(() => Object.keys(categoryTotals), [categoryTotals]);
-  const dataValues = useMemo(() => Object.values(categoryTotals), [categoryTotals]);
+  const dataValues = useMemo(
+    () => Object.values(categoryTotals),
+    [categoryTotals],
+  );
 
   const currentMonthName = useMemo(() => {
     return new Date().toLocaleString("en-US", { month: "long" });
@@ -171,7 +193,7 @@ function Dashboard() {
 
   // C) Today's Expenses Data
   const expensesToday = expenses.filter(
-    (expense) => expense.date === new Date().toISOString().slice(0, 10)
+    (expense) => expense.date === new Date().toISOString().slice(0, 10),
   );
 
   // D) Filtered Expenses for Transactions List based on Floating Filter Node
@@ -180,20 +202,22 @@ function Dashboard() {
 
     const parseExpenseDate = (dateStr) => {
       if (!dateStr) return null;
-      const parts = dateStr.split('-');
+      const parts = dateStr.split("-");
       if (parts.length === 3) {
         return {
           year: parseInt(parts[0]),
           month: parseInt(parts[1]) - 1,
-          day: parseInt(parts[2])
+          day: parseInt(parts[2]),
         };
       }
       const d = new Date(dateStr);
-      return isNaN(d.getTime()) ? null : {
-        year: d.getFullYear(),
-        month: d.getMonth(),
-        day: d.getDate()
-      };
+      return isNaN(d.getTime())
+        ? null
+        : {
+            year: d.getFullYear(),
+            month: d.getMonth(),
+            day: d.getDate(),
+          };
     };
 
     if (trendRange === "daily") {
@@ -211,10 +235,26 @@ function Dashboard() {
       const startDay = new Date();
       startDay.setDate(todayDate.getDate() - ((3 - offsetIndex) * 7 + 6));
       const endDay = new Date();
-      endDay.setDate(todayDate.getDate() - ((3 - offsetIndex) * 7));
+      endDay.setDate(todayDate.getDate() - (3 - offsetIndex) * 7);
 
-      const startTs = new Date(startDay.getFullYear(), startDay.getMonth(), startDay.getDate(), 0, 0, 0, 0).getTime();
-      const endTs = new Date(endDay.getFullYear(), endDay.getMonth(), endDay.getDate(), 23, 59, 59, 999).getTime();
+      const startTs = new Date(
+        startDay.getFullYear(),
+        startDay.getMonth(),
+        startDay.getDate(),
+        0,
+        0,
+        0,
+        0,
+      ).getTime();
+      const endTs = new Date(
+        endDay.getFullYear(),
+        endDay.getMonth(),
+        endDay.getDate(),
+        23,
+        59,
+        59,
+        999,
+      ).getTime();
 
       return expenses.filter((e) => {
         const parsed = parseExpenseDate(e.date);
@@ -225,14 +265,29 @@ function Dashboard() {
     }
 
     if (trendRange === "monthly") {
-      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const monthNames = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
       const targetMonth = monthNames.indexOf(trendSubValue);
       if (targetMonth === -1) return expenses;
       const targetYear = new Date().getFullYear();
 
       return expenses.filter((e) => {
         const parsed = parseExpenseDate(e.date);
-        return parsed && parsed.month === targetMonth && parsed.year === targetYear;
+        return (
+          parsed && parsed.month === targetMonth && parsed.year === targetYear
+        );
       });
     }
 
@@ -257,29 +312,35 @@ function Dashboard() {
 
     const parseExpenseDate = (dateStr) => {
       if (!dateStr) return null;
-      const parts = dateStr.split('-');
+      const parts = dateStr.split("-");
       if (parts.length === 3) {
         return {
           year: parseInt(parts[0]),
           month: parseInt(parts[1]) - 1,
-          day: parseInt(parts[2])
+          day: parseInt(parts[2]),
         };
       }
       const d = new Date(dateStr);
-      return isNaN(d.getTime()) ? null : {
-        year: d.getFullYear(),
-        month: d.getMonth(),
-        day: d.getDate()
-      };
+      return isNaN(d.getTime())
+        ? null
+        : {
+            year: d.getFullYear(),
+            month: d.getMonth(),
+            day: d.getDate(),
+          };
     };
 
     if (trendRange === "daily") {
       // Daily defaults to selected day trendSubValue, displaying 7 days leading up to it
       let baseDate = new Date();
       if (trendSubValue) {
-        const parts = trendSubValue.split('-');
+        const parts = trendSubValue.split("-");
         if (parts.length === 3) {
-          baseDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+          baseDate = new Date(
+            parseInt(parts[0]),
+            parseInt(parts[1]) - 1,
+            parseInt(parts[2]),
+          );
         } else {
           baseDate = new Date(trendSubValue);
         }
@@ -289,16 +350,21 @@ function Dashboard() {
       for (let i = 6; i >= 0; i--) {
         const d = new Date(baseDate);
         d.setDate(baseDate.getDate() - i);
-        const dayLabel = d.toLocaleDateString("en-US", { weekday: "short", day: "numeric" });
+        const dayLabel = d.toLocaleDateString("en-US", {
+          weekday: "short",
+          day: "numeric",
+        });
         labels.push(dayLabel);
 
         const daySpend = expenses
           .filter((e) => {
             const parsed = parseExpenseDate(e.date);
-            return parsed &&
-                   parsed.year === d.getFullYear() &&
-                   parsed.month === d.getMonth() &&
-                   parsed.day === d.getDate();
+            return (
+              parsed &&
+              parsed.year === d.getFullYear() &&
+              parsed.month === d.getMonth() &&
+              parsed.day === d.getDate()
+            );
           })
           .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
         expenseData.push(daySpend);
@@ -309,18 +375,38 @@ function Dashboard() {
         const startDay = new Date();
         startDay.setDate(todayDate.getDate() - (i * 7 + 6));
         const endDay = new Date();
-        endDay.setDate(todayDate.getDate() - (i * 7));
+        endDay.setDate(todayDate.getDate() - i * 7);
 
         labels.push(`Week ${4 - i}`);
 
-        const startTs = new Date(startDay.getFullYear(), startDay.getMonth(), startDay.getDate(), 0, 0, 0, 0).getTime();
-        const endTs = new Date(endDay.getFullYear(), endDay.getMonth(), endDay.getDate(), 23, 59, 59, 999).getTime();
+        const startTs = new Date(
+          startDay.getFullYear(),
+          startDay.getMonth(),
+          startDay.getDate(),
+          0,
+          0,
+          0,
+          0,
+        ).getTime();
+        const endTs = new Date(
+          endDay.getFullYear(),
+          endDay.getMonth(),
+          endDay.getDate(),
+          23,
+          59,
+          59,
+          999,
+        ).getTime();
 
         const weekSpend = expenses
           .filter((e) => {
             const parsed = parseExpenseDate(e.date);
             if (!parsed) return false;
-            const expTs = new Date(parsed.year, parsed.month, parsed.day).getTime();
+            const expTs = new Date(
+              parsed.year,
+              parsed.month,
+              parsed.day,
+            ).getTime();
             return expTs >= startTs && expTs <= endTs;
           })
           .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
@@ -341,7 +427,11 @@ function Dashboard() {
         const monthSpend = expenses
           .filter((e) => {
             const parsed = parseExpenseDate(e.date);
-            return parsed && parsed.month === targetMonth && parsed.year === targetYear;
+            return (
+              parsed &&
+              parsed.month === targetMonth &&
+              parsed.year === targetYear
+            );
           })
           .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
         expenseData.push(monthSpend);
@@ -391,27 +481,27 @@ function Dashboard() {
   const trendOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: { 
-      legend: { 
-        display: true, 
+    plugins: {
+      legend: {
+        display: true,
         position: "top",
         labels: {
           font: { family: "Poppins, sans-serif", size: 9, weight: "bold" },
           color: "#94a3b8",
           boxWidth: 10,
-        }
-      }, 
-      title: { display: false } 
+        },
+      },
+      title: { display: false },
     },
     scales: {
-      y: { 
+      y: {
         display: true,
         grid: { color: "rgba(148, 163, 184, 0.05)" },
-        ticks: { font: { size: 9 }, color: "#94a3b8" }
+        ticks: { font: { size: 9 }, color: "#94a3b8" },
       },
-      x: { 
-        grid: { display: false }, 
-        ticks: { font: { size: 9 }, color: "#94a3b8" } 
+      x: {
+        grid: { display: false },
+        ticks: { font: { size: 9 }, color: "#94a3b8" },
       },
     },
   };
@@ -466,8 +556,6 @@ function Dashboard() {
           </span>
         </div>
       </motion.div>
-
-
 
       {/* --- Stat Cards --- */}
       <motion.div
@@ -534,7 +622,13 @@ function Dashboard() {
                   Spending Trend
                 </h2>
                 <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
-                  {trendRange === "daily" ? `Last 7 Days (Focus: ${trendSubValue})` : trendRange === "weekly" ? `Last 4 Weeks (Focus: ${trendSubValue})` : trendRange === "monthly" ? `Last 6 Months (Focus: ${trendSubValue})` : `Last 3 Years (Focus: ${trendSubValue})`}
+                  {trendRange === "daily"
+                    ? `Last 7 Days (Focus: ${trendSubValue})`
+                    : trendRange === "weekly"
+                      ? `Last 4 Weeks (Focus: ${trendSubValue})`
+                      : trendRange === "monthly"
+                        ? `Last 6 Months (Focus: ${trendSubValue})`
+                        : `Last 3 Years (Focus: ${trendSubValue})`}
                 </p>
               </div>
 
@@ -584,10 +678,27 @@ function Dashboard() {
                       {(trendRange === "yearly"
                         ? ["2024", "2025", "2026"]
                         : trendRange === "monthly"
-                        ? ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-                        : ["Week 1", "Week 2", "Week 3", "Week 4"]
+                          ? [
+                              "Jan",
+                              "Feb",
+                              "Mar",
+                              "Apr",
+                              "May",
+                              "Jun",
+                              "Jul",
+                              "Aug",
+                              "Sep",
+                              "Oct",
+                              "Nov",
+                              "Dec",
+                            ]
+                          : ["Week 1", "Week 2", "Week 3", "Week 4"]
                       ).map((subOpt) => (
-                        <option key={subOpt} value={subOpt} className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
+                        <option
+                          key={subOpt}
+                          value={subOpt}
+                          className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
+                        >
                           {subOpt}
                         </option>
                       ))}
@@ -651,7 +762,8 @@ function Dashboard() {
                                               ? "bg-blue-100 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400"
                                               : exp.category === "Shopping"
                                                 ? "bg-purple-100 text-purple-600 dark:bg-purple-950/30 dark:text-purple-400"
-                                                : exp.category === "Entertainment"
+                                                : exp.category ===
+                                                    "Entertainment"
                                                   ? "bg-pink-100 text-pink-600 dark:bg-pink-950/30 dark:text-pink-400"
                                                   : exp.category === "Utilities"
                                                     ? "bg-amber-100 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400"
@@ -688,7 +800,9 @@ function Dashboard() {
           >
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">Categories</h2>
+                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">
+                  Categories
+                </h2>
                 <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">
                   {currentMonthName} Breakdown
                 </p>
@@ -715,31 +829,47 @@ function Dashboard() {
                 </h4>
                 <div className="space-y-3.5">
                   {Object.entries(categoryTotals).map(([category, amount]) => {
-                    const percentage = totalamt > 0 ? (amount / totalamt) * 100 : 0;
-                    
+                    const percentage =
+                      totalamt > 0 ? (amount / totalamt) * 100 : 0;
+
                     // Simple helper to match color classes
                     let colorClass = "bg-slate-500";
                     if (category === "Food") colorClass = "bg-emerald-500";
-                    else if (category === "Transport") colorClass = "bg-blue-500";
-                    else if (category === "Shopping") colorClass = "bg-purple-500";
-                    else if (category === "Entertainment") colorClass = "bg-pink-500";
-                    else if (category === "Utilities") colorClass = "bg-amber-500";
+                    else if (category === "Transport")
+                      colorClass = "bg-blue-500";
+                    else if (category === "Shopping")
+                      colorClass = "bg-purple-500";
+                    else if (category === "Entertainment")
+                      colorClass = "bg-pink-500";
+                    else if (category === "Utilities")
+                      colorClass = "bg-amber-500";
 
                     return (
                       <div key={category} className="space-y-1">
                         <div className="flex justify-between items-center text-xs font-bold">
                           <div className="flex items-center gap-2">
-                            <span className={`w-2.5 h-2.5 rounded-full ${colorClass}`} />
-                            <span className="text-slate-700 dark:text-slate-300">{category}</span>
+                            <span
+                              className={`w-2.5 h-2.5 rounded-full ${colorClass}`}
+                            />
+                            <span className="text-slate-700 dark:text-slate-300">
+                              {category}
+                            </span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-slate-800 dark:text-slate-200">{formatCurrency(amount)}</span>
-                            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">({percentage.toFixed(0)}%)</span>
+                            <span className="text-slate-800 dark:text-slate-200">
+                              {formatCurrency(amount)}
+                            </span>
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                              ({percentage.toFixed(0)}%)
+                            </span>
                           </div>
                         </div>
                         {/* Miniature Progress Bar */}
                         <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full ${colorClass}`} style={{ width: `${percentage}%` }} />
+                          <div
+                            className={`h-full rounded-full ${colorClass}`}
+                            style={{ width: `${percentage}%` }}
+                          />
                         </div>
                       </div>
                     );
@@ -756,7 +886,10 @@ function Dashboard() {
           >
             <div className="relative z-10">
               <div className="bg-teal-50 dark:bg-teal-950/20 w-fit p-2 rounded-lg mb-4">
-                <Sparkles size={20} className="text-teal-600 dark:text-teal-400" />
+                <Sparkles
+                  size={20}
+                  className="text-teal-600 dark:text-teal-400"
+                />
               </div>
               <h2 className="text-xl font-bold mb-2 text-slate-900 dark:text-white">
                 Daily Tips

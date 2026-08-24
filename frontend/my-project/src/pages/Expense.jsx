@@ -101,6 +101,11 @@ function Expense() {
     const catSpent = catExpenses.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
     const newSpent = catSpent + parseFloat(formdata.amount);
 
+    // --- CONSOLE LOGS FOR DEBUGGING / INSPECTION ---
+    console.log("📅 All Expenses from Current Month:", currentMonthExpenses);
+    console.log(`🏷️ Category Expenses for "${formdata.category}" (Current Month Only):`, catExpenses);
+    console.log(`💰 Previous Spent in ${formdata.category}: ₹${catSpent} | Adding: ₹${formdata.amount} | New Spent: ₹${newSpent} | Limit: ₹${limit}`);
+
     addExpense(formdata);
 
     // Trigger global notifications

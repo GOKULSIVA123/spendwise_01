@@ -1,21 +1,21 @@
 import React, { useContext, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Wallet, 
-  Utensils, 
-  Car, 
-  ShoppingBag, 
-  Film, 
-  Zap, 
-  HelpCircle, 
-  TrendingUp, 
-  Plus, 
-  Minus, 
-  Save, 
-  AlertTriangle, 
+import {
+  Wallet,
+  Utensils,
+  Car,
+  ShoppingBag,
+  Film,
+  Zap,
+  HelpCircle,
+  TrendingUp,
+  Plus,
+  Minus,
+  Save,
+  AlertTriangle,
   CheckCircle,
   Coins,
-  BarChart3
+  BarChart3,
 } from "lucide-react";
 import { Navcontent } from "../context/Navcontent";
 import { Expensecontent } from "../context/Expensecontent";
@@ -37,11 +37,17 @@ ChartJS.register(
   BarElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
 );
 
 function Budget() {
-  const { navamt, setNavamt, categoryBudgets, setCategoryBudgets, addNotification } = useContext(Navcontent);
+  const {
+    navamt,
+    setNavamt,
+    categoryBudgets,
+    setCategoryBudgets,
+    addNotification,
+  } = useContext(Navcontent);
   const { expenses } = useContext(Expensecontent);
 
   // Local state for forms
@@ -55,19 +61,51 @@ function Budget() {
     Other: categoryBudgets.Other?.toString() || "0",
   });
 
-
-
   // Categories definitions
   const categoriesList = [
-    { id: "Food", label: "Food", icon: Utensils, iconColor: "text-emerald-600 dark:text-emerald-400", bgColor: "bg-emerald-50 dark:bg-emerald-950/20" },
-    { id: "Transport", label: "Transport", icon: Car, iconColor: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-50 dark:bg-blue-950/20" },
-    { id: "Shopping", label: "Shopping", icon: ShoppingBag, iconColor: "text-purple-600 dark:text-purple-400", bgColor: "bg-purple-50 dark:bg-purple-950/20" },
-    { id: "Entertainment", label: "Entertainment", icon: Film, iconColor: "text-pink-600 dark:text-pink-400", bgColor: "bg-pink-50 dark:bg-pink-950/20" },
-    { id: "Utilities", label: "Utilities", icon: Zap, iconColor: "text-amber-600 dark:text-amber-400", bgColor: "bg-amber-50 dark:bg-amber-950/20" },
-    { id: "Other", label: "Other", icon: HelpCircle, iconColor: "text-slate-600 dark:text-slate-400", bgColor: "bg-slate-100 dark:bg-slate-800/40" },
+    {
+      id: "Food",
+      label: "Food",
+      icon: Utensils,
+      iconColor: "text-emerald-600 dark:text-emerald-400",
+      bgColor: "bg-emerald-50 dark:bg-emerald-950/20",
+    },
+    {
+      id: "Transport",
+      label: "Transport",
+      icon: Car,
+      iconColor: "text-blue-600 dark:text-blue-400",
+      bgColor: "bg-blue-50 dark:bg-blue-950/20",
+    },
+    {
+      id: "Shopping",
+      label: "Shopping",
+      icon: ShoppingBag,
+      iconColor: "text-purple-600 dark:text-purple-400",
+      bgColor: "bg-purple-50 dark:bg-purple-950/20",
+    },
+    {
+      id: "Entertainment",
+      label: "Entertainment",
+      icon: Film,
+      iconColor: "text-pink-600 dark:text-pink-400",
+      bgColor: "bg-pink-50 dark:bg-pink-950/20",
+    },
+    {
+      id: "Utilities",
+      label: "Utilities",
+      icon: Zap,
+      iconColor: "text-amber-600 dark:text-amber-400",
+      bgColor: "bg-amber-50 dark:bg-amber-950/20",
+    },
+    {
+      id: "Other",
+      label: "Other",
+      icon: HelpCircle,
+      iconColor: "text-slate-600 dark:text-slate-400",
+      bgColor: "bg-slate-100 dark:bg-slate-800/40",
+    },
   ];
-
-
 
   // --- LOGIC: Filter expenses for the current month ---
   const currentMonthExpenses = useMemo(() => {
@@ -75,14 +113,18 @@ function Budget() {
     const currentYear = new Date().getFullYear();
     return expenses.filter((e) => {
       if (!e.date) return false;
-      const parts = e.date.split('-');
+      const parts = e.date.split("-");
       if (parts.length === 3) {
         const year = parseInt(parts[0]);
         const month = parseInt(parts[1]) - 1;
         return month === currentMonth && year === currentYear;
       }
       const d = new Date(e.date);
-      return !isNaN(d.getTime()) && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      return (
+        !isNaN(d.getTime()) &&
+        d.getMonth() === currentMonth &&
+        d.getFullYear() === currentYear
+      );
     });
   }, [expenses]);
 
@@ -104,13 +146,19 @@ function Budget() {
       toast.error("Please enter a valid monthly income.");
       return;
     }
-    
+
     const toastId = toast.loading("Saving Monthly Income...");
     await new Promise((resolve) => setTimeout(resolve, 800));
 
     setNavamt(parsedIncome);
-    toast.success(`Set Monthly Income budget limit to ₹${parsedIncome.toLocaleString()}`, { id: toastId });
-    addNotification(`Set Monthly Income budget limit to ₹${parsedIncome.toLocaleString()}`, "success");
+    toast.success(
+      `Set Monthly Income budget limit to ₹${parsedIncome.toLocaleString()}`,
+      { id: toastId },
+    );
+    addNotification(
+      `Set Monthly Income budget limit to ₹${parsedIncome.toLocaleString()}`,
+      "success",
+    );
   };
 
   const handleSaveBudgets = async (e) => {
@@ -136,22 +184,25 @@ function Budget() {
   const handleAdjustBudget = (category, amount) => {
     const currentVal = parseFloat(tempBudgets[category]) || 0;
     const newVal = Math.max(0, currentVal + amount);
-    setTempBudgets(prev => ({
+    setTempBudgets((prev) => ({
       ...prev,
-      [category]: newVal.toString()
+      [category]: newVal.toString(),
     }));
   };
 
   const handleBudgetChange = (category, value) => {
-    setTempBudgets(prev => ({
+    setTempBudgets((prev) => ({
       ...prev,
-      [category]: value
+      [category]: value,
     }));
   };
 
   // --- Calculations ---
   const totalAllocated = useMemo(() => {
-    return Object.values(tempBudgets).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+    return Object.values(tempBudgets).reduce(
+      (sum, val) => sum + (parseFloat(val) || 0),
+      0,
+    );
   }, [tempBudgets]);
 
   const remainingUnallocated = navamt - totalAllocated;
@@ -160,7 +211,9 @@ function Budget() {
   // --- Chart Data ---
   const barChartData = useMemo(() => {
     const labels = categoriesList.map((cat) => cat.label);
-    const budgetData = categoriesList.map((cat) => parseFloat(tempBudgets[cat.id]) || 0);
+    const budgetData = categoriesList.map(
+      (cat) => parseFloat(tempBudgets[cat.id]) || 0,
+    );
     const spentData = categoriesList.map((cat) => categorySpent[cat.id] || 0);
 
     return {
@@ -170,13 +223,13 @@ function Budget() {
           label: "Allocated",
           data: budgetData,
           backgroundColor: "#6366f1", // Indigo 500
-          borderRadius: 4,
+          borderRadius: 8,
         },
         {
           label: "Spent",
           data: spentData,
           backgroundColor: "#10b981", // Emerald 500
-          borderRadius: 4,
+          borderRadius: 8,
         },
       ],
     };
@@ -197,9 +250,13 @@ function Budget() {
           },
         },
         tooltip: {
-          titleFont: { family: "Poppins, sans-serif", size: 10, weight: "bold" },
+          titleFont: {
+            family: "Poppins, sans-serif",
+            size: 10,
+            weight: "bold",
+          },
           bodyFont: { family: "Poppins, sans-serif", size: 9 },
-        }
+        },
       },
       scales: {
         y: {
@@ -226,8 +283,6 @@ function Budget() {
       transition={{ duration: 0.35, ease: "easeOut" }}
       className="p-6 font-sans bg-slate-50 dark:bg-slate-950 min-h-screen w-full text-slate-800 dark:text-slate-100 transition-colors"
     >
-
-
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
@@ -238,9 +293,9 @@ function Budget() {
             Setup Income & Plan Category Allocations
           </p>
         </div>
-      </div>      {/* Top Section: Income, Summary, and Chart side by side */}
+      </div>{" "}
+      {/* Top Section: Income, Summary, and Chart side by side */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-        
         {/* Monthly Income Form Card (Top-Left) */}
         <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-800/80 relative overflow-hidden flex flex-col justify-between min-h-[220px]">
           <div>
@@ -249,16 +304,23 @@ function Budget() {
                 <Coins size={22} />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-slate-855 dark:text-slate-200">Monthly Income</h2>
+                <h2 className="text-lg font-bold text-slate-855 dark:text-slate-200">
+                  Monthly Income
+                </h2>
                 <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
                   Your Total Limit
                 </p>
               </div>
             </div>
 
-            <form onSubmit={handleSaveIncome} className="flex flex-col sm:flex-row items-center gap-3 relative z-10">
+            <form
+              onSubmit={handleSaveIncome}
+              className="flex flex-col sm:flex-row items-center gap-3 relative z-10"
+            >
               <div className="flex-1 w-full flex items-center bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-3 focus-within:ring-2 focus-within:ring-teal-500/20 focus-within:border-teal-500 transition-all">
-                <span className="text-slate-400 dark:text-slate-500 font-extrabold text-sm mr-1.5 select-none">₹</span>
+                <span className="text-slate-400 dark:text-slate-500 font-extrabold text-sm mr-1.5 select-none">
+                  ₹
+                </span>
                 <input
                   type="number"
                   value={incomeInput}
@@ -287,20 +349,32 @@ function Budget() {
             <div className="space-y-2">
               {/* Income */}
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800/80">
-                <span className="text-xs text-slate-500 font-medium">Monthly Income</span>
-                <span className="text-sm font-extrabold text-slate-800 dark:text-slate-200">{formatCurrency(navamt)}</span>
+                <span className="text-xs text-slate-500 font-medium">
+                  Monthly Income
+                </span>
+                <span className="text-sm font-extrabold text-slate-800 dark:text-slate-200">
+                  {formatCurrency(navamt)}
+                </span>
               </div>
-              
+
               {/* Total Allocated */}
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800/80">
-                <span className="text-xs text-slate-500 font-medium">Total Allocated</span>
-                <span className="text-sm font-extrabold text-indigo-600 dark:text-indigo-400">{formatCurrency(totalAllocated)}</span>
+                <span className="text-xs text-slate-500 font-medium">
+                  Total Allocated
+                </span>
+                <span className="text-sm font-extrabold text-indigo-600 dark:text-indigo-400">
+                  {formatCurrency(totalAllocated)}
+                </span>
               </div>
 
               {/* Unallocated */}
               <div className="flex justify-between items-center py-1.5">
-                <span className="text-xs text-slate-500 font-medium">Unallocated Balance</span>
-                <span className={`text-sm font-extrabold ${remainingUnallocated >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                <span className="text-xs text-slate-500 font-medium">
+                  Unallocated Balance
+                </span>
+                <span
+                  className={`text-sm font-extrabold ${remainingUnallocated >= 0 ? "text-emerald-500" : "text-rose-500"}`}
+                >
                   {formatCurrency(remainingUnallocated)}
                 </span>
               </div>
@@ -314,11 +388,11 @@ function Budget() {
                   animate={{ width: `${Math.min(100, allocationPercentage)}%` }}
                   transition={{ duration: 0.5, ease: "easeOut" }}
                   className={`h-full ${
-                    allocationPercentage > 100 
-                      ? "bg-rose-500" 
-                      : allocationPercentage > 85 
-                      ? "bg-amber-500" 
-                      : "bg-emerald-500"
+                    allocationPercentage > 100
+                      ? "bg-rose-500"
+                      : allocationPercentage > 85
+                        ? "bg-amber-500"
+                        : "bg-emerald-500"
                   }`}
                 />
               </div>
@@ -351,45 +425,50 @@ function Budget() {
           </div>
           <div className="h-[125px] w-full flex items-center justify-center">
             <Bar data={barChartData} options={barChartOptions} />
+          </div>
         </div>
       </div>
-    </div>
-
       {/* Bottom Section: Category Budgets (3-column grid layout below) */}
       <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-800/80 w-full">
         <div className="mb-6">
-          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">Category Budgets</h2>
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">
+            Category Budgets
+          </h2>
           <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">
             Allocate Funds Per Category
           </p>
         </div>
 
         <form onSubmit={handleSaveBudgets} className="space-y-6">
-          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {categoriesList.map((cat) => {
               const Icon = cat.icon;
               const spentAmt = categorySpent[cat.id] || 0;
               const limitAmt = parseFloat(tempBudgets[cat.id]) || 0;
-              
+
               // Compute usage percentage: relative to limit if set, otherwise relative to overall income budget
-              const effectiveLimit = limitAmt > 0 ? limitAmt : (navamt > 0 ? navamt : 1);
+              const effectiveLimit =
+                limitAmt > 0 ? limitAmt : navamt > 0 ? navamt : 1;
               const usagePercentage = (spentAmt / effectiveLimit) * 100;
               const isExceeded = spentAmt > limitAmt && limitAmt > 0;
 
               return (
-                <div 
-                  key={cat.id} 
+                <div
+                  key={cat.id}
                   className="p-4 bg-slate-50/40 dark:bg-slate-950/65 border border-slate-200/60 dark:border-slate-800/80 rounded-[1.5rem] hover:border-teal-500/30 dark:hover:border-teal-500/30 transition-all flex flex-col justify-between gap-3 min-h-[145px] shadow-sm"
                 >
                   {/* Top section: Icon and Name & Spent */}
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2.5 rounded-2xl ${cat.bgColor} ${cat.iconColor} shrink-0`}>
+                      <div
+                        className={`p-2.5 rounded-2xl ${cat.bgColor} ${cat.iconColor} shrink-0`}
+                      >
                         <Icon size={18} />
                       </div>
                       <div>
-                        <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-sm tracking-tight">{cat.label}</h4>
+                        <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-sm tracking-tight">
+                          {cat.label}
+                        </h4>
                         <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">
                           Spent: {formatCurrency(spentAmt)}
                         </p>
@@ -403,7 +482,13 @@ function Budget() {
                     <div className="flex justify-between items-center text-slate-400 dark:text-slate-500 tracking-wider">
                       {limitAmt > 0 ? (
                         <>
-                          <span className={isExceeded ? "text-rose-500 font-black text-xs" : "text-emerald-500 dark:text-emerald-400 font-black text-xs"}>
+                          <span
+                            className={
+                              isExceeded
+                                ? "text-rose-500 font-black text-xs"
+                                : "text-emerald-500 dark:text-emerald-400 font-black text-xs"
+                            }
+                          >
                             {usagePercentage.toFixed(0)}% Limit Used
                           </span>
                           {isExceeded && (
@@ -415,75 +500,26 @@ function Budget() {
                       ) : (
                         <>
                           <span className="text-emerald-500 dark:text-emerald-400 font-black text-xs">
-                            {navamt > 0 && spentAmt > 0 ? `${usagePercentage.toFixed(0)}% of Budget` : "Limit not set"}
+                            {navamt > 0 && spentAmt > 0
+                              ? `${usagePercentage.toFixed(0)}% of Budget`
+                              : "Limit not set"}
                           </span>
-                          <span className="text-slate-400 italic text-[10px]">No limit set</span>
+                          <span className="text-slate-400 italic text-[10px]">
+                            No limit set
+                          </span>
                         </>
                       )}
                     </div>
 
-                    {/* Tiny Horizontal Bar Chart (Below) */}
-                    <div className="h-[22px] w-full mt-2 mb-1.5">
-                      <Bar 
-                        data={{
-                          labels: ["Progress"],
-                          datasets: [
-                            {
-                              label: "Spent",
-                              data: [spentAmt],
-                              backgroundColor: isExceeded ? "#ef4444" : "#10b981",
-                              borderRadius: { 
-                                topLeft: 6, 
-                                bottomLeft: 6, 
-                                topRight: (limitAmt > 0 && spentAmt >= limitAmt) || (limitAmt === 0 && spentAmt >= navamt) ? 6 : 0, 
-                                bottomRight: (limitAmt > 0 && spentAmt >= limitAmt) || (limitAmt === 0 && spentAmt >= navamt) ? 6 : 0 
-                              },
-                              barThickness: 10,
-                            },
-                            {
-                              label: "Remaining",
-                              data: [limitAmt > 0 ? Math.max(0, limitAmt - spentAmt) : Math.max(0, navamt - spentAmt)],
-                              backgroundColor: "rgba(148, 163, 184, 0.2)",
-                              borderRadius: { 
-                                topRight: 6, 
-                                bottomRight: 6, 
-                                topLeft: spentAmt === 0 ? 6 : 0, 
-                                bottomLeft: spentAmt === 0 ? 6 : 0 
-                              },
-                              barThickness: 10,
-                            }
-                          ]
-                        }} 
-                        options={{
-                          indexAxis: 'y',
-                          responsive: true,
-                          maintainAspectRatio: false,
-                          plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                              callbacks: {
-                                label: (context) => {
-                                  return `${context.dataset.label}: ₹${context.raw.toLocaleString()}`;
-                                }
-                              }
-                            }
-                          },
-                          scales: {
-                            x: {
-                              stacked: true,
-                              beginAtZero: true,
-                              grid: { display: false },
-                              ticks: { display: false },
-                              border: { display: false }
-                            },
-                            y: {
-                              stacked: true,
-                              grid: { display: false },
-                              ticks: { display: false },
-                              border: { display: false }
-                            }
-                          }
-                        }} 
+                    {/* Single Line Rounded Progress Bar Track */}
+                    <div className="w-full h-3 bg-slate-200/60 dark:bg-slate-800/60 rounded-full overflow-hidden mt-2 mb-1.5">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ease-out ${
+                          isExceeded ? "bg-rose-500" : "bg-emerald-500"
+                        }`}
+                        style={{
+                          width: `${Math.min(100, Math.max(0, usagePercentage))}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -493,7 +529,7 @@ function Budget() {
                     <span className="text-[10px] font-bold text-slate-400 dark:text-slate-555 uppercase tracking-widest">
                       Limit
                     </span>
-                    
+
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
@@ -502,14 +538,18 @@ function Budget() {
                       >
                         <Minus size={10} />
                       </button>
-                      
+
                       {/* Flex-based prefix-aligned input wrapper */}
                       <div className="flex items-center bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1 focus-within:ring-1 focus-within:ring-teal-500 transition-all">
-                        <span className="text-slate-400 dark:text-slate-500 text-[10px] font-extrabold mr-1 select-none">₹</span>
+                        <span className="text-slate-400 dark:text-slate-500 text-[10px] font-extrabold mr-1 select-none">
+                          ₹
+                        </span>
                         <input
                           type="number"
                           value={tempBudgets[cat.id]}
-                          onChange={(e) => handleBudgetChange(cat.id, e.target.value)}
+                          onChange={(e) =>
+                            handleBudgetChange(cat.id, e.target.value)
+                          }
                           placeholder="0"
                           className="w-16 bg-transparent border-none outline-none text-[10px] font-bold text-slate-700 dark:text-slate-200 text-left [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
@@ -537,7 +577,6 @@ function Budget() {
               <Save size={14} /> Save Category Limits
             </button>
           </div>
-
         </form>
       </div>
     </motion.div>
