@@ -1,12 +1,12 @@
 import React, { useState, useContext } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { 
-  FileText, 
-  DollarSign, 
-  Tag, 
-  Calendar, 
-  MessageSquare, 
+import {
+  FileText,
+  DollarSign,
+  Tag,
+  Calendar,
+  MessageSquare,
   ArrowRight,
   Utensils,
   Car,
@@ -14,7 +14,7 @@ import {
   Film,
   Zap,
   HelpCircle,
-  CheckCircle
+  CheckCircle,
 } from "lucide-react";
 import { Expensecontent } from "../context/Expensecontent";
 import { Navcontent } from "../context/Navcontent";
@@ -22,8 +22,8 @@ import { Navcontent } from "../context/Navcontent";
 function Expense() {
   const navigate = useNavigate();
   const { addExpense, expenses } = useContext(Expensecontent);
-  const { addNotification, categoryBudgets } = useContext(Navcontent);
-  
+  const { addNotification, categoryBudgets, getBudgetForMonth } = useContext(Navcontent);
+
   const [formdata, setFormdata] = useState({
     title: "",
     amount: "",
@@ -36,47 +36,53 @@ function Expense() {
   const [showSuccess, setShowSuccess] = useState(false);
 
   const categories = [
-    { 
-      id: "Food", 
-      label: "Food", 
-      icon: Utensils, 
-      color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/30 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/20",
-      activeColor: "bg-emerald-500 border-emerald-500 text-white shadow-sm"
+    {
+      id: "Food",
+      label: "Food",
+      icon: Utensils,
+      color:
+        "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/30 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/20",
+      activeColor: "bg-emerald-500 border-emerald-500 text-white shadow-sm",
     },
-    { 
-      id: "Transport", 
-      label: "Transport", 
-      icon: Car, 
-      color: "text-blue-600 bg-blue-50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/30 hover:bg-blue-100/50 dark:hover:bg-blue-900/20",
-      activeColor: "bg-blue-500 border-blue-500 text-white shadow-sm"
+    {
+      id: "Transport",
+      label: "Transport",
+      icon: Car,
+      color:
+        "text-blue-600 bg-blue-50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/30 hover:bg-blue-100/50 dark:hover:bg-blue-900/20",
+      activeColor: "bg-blue-500 border-blue-500 text-white shadow-sm",
     },
-    { 
-      id: "Shopping", 
-      label: "Shopping", 
-      icon: ShoppingBag, 
-      color: "text-purple-600 bg-purple-50 dark:bg-purple-950/20 border-purple-100 dark:border-purple-900/30 hover:bg-purple-100/50 dark:hover:bg-purple-900/20",
-      activeColor: "bg-purple-600 border-purple-600 text-white shadow-sm"
+    {
+      id: "Shopping",
+      label: "Shopping",
+      icon: ShoppingBag,
+      color:
+        "text-purple-600 bg-purple-50 dark:bg-purple-950/20 border-purple-100 dark:border-purple-900/30 hover:bg-purple-100/50 dark:hover:bg-purple-900/20",
+      activeColor: "bg-purple-600 border-purple-600 text-white shadow-sm",
     },
-    { 
-      id: "Entertainment", 
-      label: "Entertainment", 
-      icon: Film, 
-      color: "text-pink-600 bg-pink-50 dark:bg-pink-950/20 border-pink-100 dark:border-pink-900/30 hover:bg-pink-100/50 dark:hover:bg-pink-900/20",
-      activeColor: "bg-pink-500 border-pink-500 text-white shadow-sm"
+    {
+      id: "Entertainment",
+      label: "Entertainment",
+      icon: Film,
+      color:
+        "text-pink-600 bg-pink-50 dark:bg-pink-950/20 border-pink-100 dark:border-pink-900/30 hover:bg-pink-100/50 dark:hover:bg-pink-900/20",
+      activeColor: "bg-pink-500 border-pink-500 text-white shadow-sm",
     },
-    { 
-      id: "Utilities", 
-      label: "Utilities", 
-      icon: Zap, 
-      color: "text-amber-600 bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/30 hover:bg-amber-100/50 dark:hover:bg-amber-900/20",
-      activeColor: "bg-amber-500 border-amber-500 text-white shadow-sm"
+    {
+      id: "Utilities",
+      label: "Utilities",
+      icon: Zap,
+      color:
+        "text-amber-600 bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/30 hover:bg-amber-100/50 dark:hover:bg-amber-900/20",
+      activeColor: "bg-amber-500 border-amber-500 text-white shadow-sm",
     },
-    { 
-      id: "Other", 
-      label: "Other", 
-      icon: HelpCircle, 
-      color: "text-slate-600 bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800/80 hover:bg-slate-100/50 dark:hover:bg-slate-800/50",
-      activeColor: "bg-slate-700 border-slate-700 text-white shadow-sm"
+    {
+      id: "Other",
+      label: "Other",
+      icon: HelpCircle,
+      color:
+        "text-slate-600 bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800/80 hover:bg-slate-100/50 dark:hover:bg-slate-800/50",
+      activeColor: "bg-slate-700 border-slate-700 text-white shadow-sm",
     },
   ];
 
@@ -89,34 +95,55 @@ function Expense() {
   const handlesubmit = async (e) => {
     e.preventDefault();
     if (isSubmitting || showSuccess) return;
-    
+
     setIsSubmitting(true);
 
     // Premium visual delay
     await new Promise((resolve) => setTimeout(resolve, 800));
-    
-    // Check category limit threshold
-    const limit = parseFloat(categoryBudgets[formdata.category]) || 0;
-    const catExpenses = currentMonthExpenses.filter((exp) => exp.category === formdata.category);
-    const catSpent = catExpenses.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+
+    // Check category limit threshold for the specific month of the expense
+    const expMonthKey = formdata.date ? formdata.date.slice(0, 7) : new Date().toISOString().slice(0, 7);
+    const expMonthBudget = getBudgetForMonth(expMonthKey);
+    const monthCategoryBudgets = expMonthBudget.categories || {};
+    const limit = parseFloat(monthCategoryBudgets[formdata.category]) || 0;
+
+    const catExpenses = expenses.filter((exp) => {
+      if (exp.category !== formdata.category || !exp.date) return false;
+      return exp.date.startsWith(expMonthKey);
+    });
+    const catSpent = catExpenses.reduce(
+      (sum, exp) => sum + (parseFloat(exp.amount) || 0),
+      0,
+    );
     const newSpent = catSpent + parseFloat(formdata.amount);
 
     // --- CONSOLE LOGS FOR DEBUGGING / INSPECTION ---
     console.log("📅 All Expenses from Current Month:", currentMonthExpenses);
-    console.log(`🏷️ Category Expenses for "${formdata.category}" (Current Month Only):`, catExpenses);
-    console.log(`💰 Previous Spent in ${formdata.category}: ₹${catSpent} | Adding: ₹${formdata.amount} | New Spent: ₹${newSpent} | Limit: ₹${limit}`);
+    console.log(
+      `🏷️ Category Expenses for "${formdata.category}" (Current Month Only):`,
+      catExpenses,
+    );
+    console.log(
+      `💰 Previous Spent in ${formdata.category}: ₹${catSpent} | Adding: ₹${formdata.amount} | New Spent: ₹${newSpent} | Limit: ₹${limit}`,
+    );
 
     addExpense(formdata);
 
     // Trigger global notifications
-    addNotification(`Spent ₹${parseFloat(formdata.amount).toFixed(0)} on ${formdata.category} ("${formdata.title}")`, "success");
+    addNotification(
+      `Spent ₹${parseFloat(formdata.amount).toFixed(0)} on ${formdata.category} ("${formdata.title}")`,
+      "success",
+    );
     if (limit > 0 && newSpent > limit) {
-      addNotification(`Warning: "${formdata.category}" category limit of ₹${limit} has been exceeded!`, "error");
+      addNotification(
+        `Warning: "${formdata.category}" category limit of ₹${limit} has been exceeded!`,
+        "error",
+      );
     }
 
     setIsSubmitting(false);
     setShowSuccess(true);
-    
+
     await new Promise((resolve) => setTimeout(resolve, 800));
 
     setFormdata({
@@ -190,15 +217,15 @@ function Expense() {
       className="max-w-6xl mx-auto py-6 px-4"
     >
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
         {/* Left Column: Form Card (Col span 7) */}
         <div className="lg:col-span-7">
           <div className="w-full bg-white dark:bg-slate-900 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-805/80 overflow-hidden">
-            
             {/* Form Header: Styled in High Contrast Teal */}
             <div className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-100 dark:border-slate-800/80 px-6 py-4 relative">
               <div className="relative z-10">
-                <h1 className="text-lg font-bold tracking-tight text-teal-600 dark:text-teal-400">Log Transaction</h1>
+                <h1 className="text-lg font-bold tracking-tight text-teal-600 dark:text-teal-400">
+                  Log Transaction
+                </h1>
                 <p className="text-slate-400 dark:text-slate-555 text-[10px] uppercase tracking-widest font-semibold mt-0.5">
                   SpendWise Tracker
                 </p>
@@ -207,7 +234,6 @@ function Expense() {
 
             {/* Form Fields */}
             <form onSubmit={handlesubmit} className="p-5 space-y-4">
-              
               {/* Expense Name */}
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-1.5">
@@ -230,7 +256,9 @@ function Expense() {
                   <DollarSign size={12} className="text-teal-500" /> Amount (₹)
                 </label>
                 <div className="relative flex items-center max-w-[240px]">
-                  <span className="absolute left-4 pointer-events-none text-slate-500 dark:text-slate-400 font-bold text-sm">₹</span>
+                  <span className="absolute left-4 pointer-events-none text-slate-500 dark:text-slate-400 font-bold text-sm">
+                    ₹
+                  </span>
                   <input
                     onChange={handlechange}
                     value={formdata.amount}
@@ -280,18 +308,22 @@ function Expense() {
                       <button
                         key={cat.id}
                         type="button"
-                        onClick={() => setFormdata((prev) => ({ ...prev, category: cat.id }))}
+                        onClick={() =>
+                          setFormdata((prev) => ({ ...prev, category: cat.id }))
+                        }
                         className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-xl border transition-all text-center gap-1.5 cursor-pointer group ${
                           isSelected
                             ? `${cat.activeColor} border-transparent font-bold`
                             : `${cat.color} border-slate-200/80 dark:border-slate-800/80 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`
                         }`}
                       >
-                        <IconComponent 
-                          size={16} 
-                          className={isSelected ? "text-white" : "text-current"} 
+                        <IconComponent
+                          size={16}
+                          className={isSelected ? "text-white" : "text-current"}
                         />
-                        <span className="text-[10px] font-bold tracking-tight">{cat.label}</span>
+                        <span className="text-[10px] font-bold tracking-tight">
+                          {cat.label}
+                        </span>
                       </button>
                     );
                   })}
@@ -304,7 +336,7 @@ function Expense() {
                   <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
                     <Calendar size={12} className="text-teal-500" /> Date
                   </label>
-                  
+
                   {/* Date Presets */}
                   <div className="flex gap-1.5">
                     <button
@@ -322,7 +354,10 @@ function Expense() {
                       type="button"
                       onClick={() => setPresetDate("yesterday")}
                       className={`px-2 py-0.5 text-[9px] font-bold rounded border transition-all cursor-pointer ${
-                        formdata.date === new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+                        formdata.date ===
+                        new Date(Date.now() - 86400000)
+                          .toISOString()
+                          .slice(0, 10)
                           ? "bg-teal-600 border-teal-600 text-white"
                           : "bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                       }`}
@@ -372,8 +407,8 @@ function Expense() {
                   showSuccess
                     ? "bg-emerald-500"
                     : isSubmitting
-                    ? "bg-teal-400"
-                    : "bg-slate-900 dark:bg-teal-600 hover:bg-teal-700 dark:hover:bg-teal-700"
+                      ? "bg-teal-400"
+                      : "bg-slate-900 dark:bg-teal-600 hover:bg-teal-700 dark:hover:bg-teal-700"
                 }`}
               >
                 {showSuccess ? (
@@ -384,9 +419,25 @@ function Expense() {
                 ) : isSubmitting ? (
                   <>
                     Saving...
-                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="animate-spin h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                   </>
                 ) : (
@@ -396,7 +447,6 @@ function Expense() {
                   </>
                 )}
               </button>
-
             </form>
           </div>
         </div>
@@ -405,7 +455,9 @@ function Expense() {
         <div className="lg:col-span-5">
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none flex flex-col gap-4">
             <div>
-              <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-200">Recent Transactions</h2>
+              <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-200">
+                Recent Transactions
+              </h2>
               <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
                 Current Month's History
               </p>
@@ -419,7 +471,9 @@ function Expense() {
               ) : (
                 currentMonthExpenses.slice(0, 5).map((exp) => {
                   // Find matching category object
-                  const catObj = categories.find((c) => c.id === exp.category) || categories[5];
+                  const catObj =
+                    categories.find((c) => c.id === exp.category) ||
+                    categories[5];
                   const CatIcon = catObj.icon;
                   return (
                     <div
@@ -427,7 +481,9 @@ function Expense() {
                       className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100/50 dark:border-slate-800/50 hover:border-slate-200 transition-colors"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className={`p-2 rounded-xl ${catObj.color} text-current flex items-center justify-center shrink-0`}>
+                        <div
+                          className={`p-2 rounded-xl ${catObj.color} text-current flex items-center justify-center shrink-0`}
+                        >
                           <CatIcon size={14} />
                         </div>
                         <div className="min-w-0">
@@ -449,7 +505,6 @@ function Expense() {
             </div>
           </div>
         </div>
-
       </div>
     </motion.div>
   );

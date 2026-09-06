@@ -1,4 +1,4 @@
-import React, { useContext, useState, useMemo } from "react";
+import React, { useContext, useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Wallet,
@@ -16,6 +16,9 @@ import {
   CheckCircle,
   Coins,
   BarChart3,
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
 } from "lucide-react";
 import { Navcontent } from "../context/Navcontent";
 import { Expensecontent } from "../context/Expensecontent";
@@ -40,26 +43,54 @@ ChartJS.register(
   Legend,
 );
 
+const formatCurrency = (val) => {
+  return `₹${(val || 0).toLocaleString("en-IN")}`;
+};
+
 function Budget() {
   const {
-    navamt,
-    setNavamt,
-    categoryBudgets,
-    setCategoryBudgets,
+    getBudgetForMonth,
+    saveBudgetForMonth,
+    activeMonthKey,
+    setActiveMonthKey,
     addNotification,
   } = useContext(Navcontent);
   const { expenses } = useContext(Expensecontent);
 
-  // Local state for forms
-  const [incomeInput, setIncomeInput] = useState(navamt.toString());
+  // Month selection state (defaults to active current month "YYYY-MM")
+  const [selectedMonth, setSelectedMonth] = useState(activeMonthKey);
+
+  // Sync activeMonthKey with context when selectedMonth changes
+  useEffect(() => {
+    setActiveMonthKey(selectedMonth);
+  }, [selectedMonth, setActiveMonthKey]);
+
+  // Load initial budget values for selected month
+  const initialBudget = getBudgetForMonth(selectedMonth);
+
+  const [incomeInput, setIncomeInput] = useState(initialBudget.income.toString());
   const [tempBudgets, setTempBudgets] = useState({
-    Food: categoryBudgets.Food?.toString() || "0",
-    Transport: categoryBudgets.Transport?.toString() || "0",
-    Shopping: categoryBudgets.Shopping?.toString() || "0",
-    Entertainment: categoryBudgets.Entertainment?.toString() || "0",
-    Utilities: categoryBudgets.Utilities?.toString() || "0",
-    Other: categoryBudgets.Other?.toString() || "0",
+    Food: (initialBudget.categories?.Food ?? 0).toString(),
+    Transport: (initialBudget.categories?.Transport ?? 0).toString(),
+    Shopping: (initialBudget.categories?.Shopping ?? 0).toString(),
+    Entertainment: (initialBudget.categories?.Entertainment ?? 0).toString(),
+    Utilities: (initialBudget.categories?.Utilities ?? 0).toString(),
+    Other: (initialBudget.categories?.Other ?? 0).toString(),
   });
+
+  // Reload budget inputs when selectedMonth changes
+  useEffect(() => {
+    const data = getBudgetForMonth(selectedMonth);
+    setIncomeInput(data.income.toString());
+    setTempBudgets({
+      Food: (data.categories?.Food ?? 0).toString(),
+      Transport: (data.categories?.Transport ?? 0).toString(),
+      Shopping: (data.categories?.Shopping ?? 0).toString(),
+      Entertainment: (data.categories?.Entertainment ?? 0).toString(),
+      Utilities: (data.categories?.Utilities ?? 0).toString(),
+      Other: (data.categories?.Other ?? 0).toString(),
+    });
+  }, [selectedMonth]);
 
   // Categories definitions
   const categoriesList = [
@@ -107,36 +138,58 @@ function Budget() {
     },
   ];
 
-  // --- LOGIC: Filter expenses for the current month ---
-  const currentMonthExpenses = useMemo(() => {
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
+  // Month navigation handlers
+  const handlePrevMonth = () => {
+    const [year, month] = selectedMonth.split("-").map(Number);
+    const prevDate = new Date(year, month - 2, 1);
+    const y = prevDate.getFullYear();
+    const m = String(prevDate.getMonth() + 1).padStart(2, "0");
+    setSelectedMonth(`${y}-${m}`);
+  };
+
+  const handleNextMonth = () => {
+    const [year, month] = selectedMonth.split("-").map(Number);
+    const nextDate = new Date(year, month, 1);
+    const y = nextDate.getFullYear();
+    const m = String(nextDate.getMonth() + 1).padStart(2, "0");
+    setSelectedMonth(`${y}-${m}`);
+  };
+
+  const monthLabel = useMemo(() => {
+    const [y, m] = selectedMonth.split("-").map(Number);
+    const dateObj = new Date(y, m - 1, 1);
+    return dateObj.toLocaleDateString("default", { month: "long", year: "numeric" });
+  }, [selectedMonth]);
+
+  // --- LOGIC: Filter expenses strictly for the selected month ---
+  const selectedMonthExpenses = useMemo(() => {
+    const [targetYear, targetMonth] = selectedMonth.split("-").map(Number);
     return expenses.filter((e) => {
       if (!e.date) return false;
       const parts = e.date.split("-");
       if (parts.length === 3) {
         const year = parseInt(parts[0]);
-        const month = parseInt(parts[1]) - 1;
-        return month === currentMonth && year === currentYear;
+        const month = parseInt(parts[1]);
+        return month === targetMonth && year === targetYear;
       }
       const d = new Date(e.date);
       return (
         !isNaN(d.getTime()) &&
-        d.getMonth() === currentMonth &&
-        d.getFullYear() === currentYear
+        d.getMonth() + 1 === targetMonth &&
+        d.getFullYear() === targetYear
       );
     });
-  }, [expenses]);
+  }, [expenses, selectedMonth]);
 
-  // --- LOGIC: Group current month spending by category ---
+  // --- LOGIC: Group selected month spending by category ---
   const categorySpent = useMemo(() => {
-    return currentMonthExpenses.reduce((acc, curr) => {
+    return selectedMonthExpenses.reduce((acc, curr) => {
       const cat = curr.category || "Other";
       const amt = parseFloat(curr.amount) || 0;
       acc[cat] = (acc[cat] || 0) + amt;
       return acc;
     }, {});
-  }, [currentMonthExpenses]);
+  }, [selectedMonthExpenses]);
 
   // --- Save Actions ---
   const handleSaveIncome = async (e) => {
@@ -147,16 +200,27 @@ function Budget() {
       return;
     }
 
-    const toastId = toast.loading("Saving Monthly Income...");
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    const toastId = toast.loading(`Saving Income for ${monthLabel}...`);
+    await new Promise((resolve) => setTimeout(resolve, 600));
 
-    setNavamt(parsedIncome);
+    saveBudgetForMonth(selectedMonth, {
+      income: parsedIncome,
+      categories: {
+        Food: parseFloat(tempBudgets.Food) || 0,
+        Transport: parseFloat(tempBudgets.Transport) || 0,
+        Shopping: parseFloat(tempBudgets.Shopping) || 0,
+        Entertainment: parseFloat(tempBudgets.Entertainment) || 0,
+        Utilities: parseFloat(tempBudgets.Utilities) || 0,
+        Other: parseFloat(tempBudgets.Other) || 0,
+      },
+    });
+
     toast.success(
-      `Set Monthly Income budget limit to ₹${parsedIncome.toLocaleString()}`,
+      `Set Income budget for ${monthLabel} to ₹${parsedIncome.toLocaleString()}`,
       { id: toastId },
     );
     addNotification(
-      `Set Monthly Income budget limit to ₹${parsedIncome.toLocaleString()}`,
+      `Set Income budget for ${monthLabel} to ₹${parsedIncome.toLocaleString()}`,
       "success",
     );
   };
@@ -173,12 +237,16 @@ function Budget() {
       newBudgets[cat] = parsedVal;
     }
 
-    const toastId = toast.loading("Syncing budget limits...");
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    const toastId = toast.loading(`Saving Limits for ${monthLabel}...`);
+    await new Promise((resolve) => setTimeout(resolve, 600));
 
-    setCategoryBudgets(newBudgets);
-    toast.success("Saved updated Category Budget limits", { id: toastId });
-    addNotification("Saved updated Category Budget limits", "success");
+    saveBudgetForMonth(selectedMonth, {
+      income: parseFloat(incomeInput) || 0,
+      categories: newBudgets,
+    });
+
+    toast.success(`Saved updated Category Limits for ${monthLabel}`, { id: toastId });
+    addNotification(`Saved updated Category Limits for ${monthLabel}`, "success");
   };
 
   const handleAdjustBudget = (category, amount) => {
@@ -198,6 +266,7 @@ function Budget() {
   };
 
   // --- Calculations ---
+  const navamt = parseFloat(incomeInput) || 0;
   const totalAllocated = useMemo(() => {
     return Object.values(tempBudgets).reduce(
       (sum, val) => sum + (parseFloat(val) || 0),
@@ -223,13 +292,13 @@ function Budget() {
           label: "Allocated",
           data: budgetData,
           backgroundColor: "#6366f1", // Indigo 500
-          borderRadius: 8,
+          borderRadius: 6,
         },
         {
           label: "Spent",
           data: spentData,
           backgroundColor: "#10b981", // Emerald 500
-          borderRadius: 8,
+          borderRadius: 6,
         },
       ],
     };
@@ -250,31 +319,30 @@ function Budget() {
           },
         },
         tooltip: {
-          titleFont: {
-            family: "Poppins, sans-serif",
-            size: 10,
-            weight: "bold",
+          callbacks: {
+            label: (ctx) => ` ${ctx.dataset.label}: ₹${ctx.raw.toLocaleString()}`,
           },
-          bodyFont: { family: "Poppins, sans-serif", size: 9 },
         },
       },
       scales: {
-        y: {
-          beginAtZero: true,
-          grid: { color: "rgba(148, 163, 184, 0.05)" },
-          ticks: { font: { size: 8 }, color: "#64748b" },
-        },
         x: {
           grid: { display: false },
-          ticks: { font: { size: 8 }, color: "#64748b" },
+          ticks: {
+            font: { family: "Poppins, sans-serif", size: 8, weight: "bold" },
+            color: "#94a3b8",
+          },
+        },
+        y: {
+          grid: { color: "rgba(226, 232, 240, 0.4)" },
+          ticks: {
+            font: { family: "Poppins, sans-serif", size: 8 },
+            color: "#94a3b8",
+            callback: (val) => `₹${val}`,
+          },
         },
       },
     };
   }, []);
-
-  // Format helper
-  const formatCurrency = (val) =>
-    `₹${(val || 0).toLocaleString(undefined, { minimumFractionDigits: 0 })}`;
 
   return (
     <motion.div
@@ -283,8 +351,8 @@ function Budget() {
       transition={{ duration: 0.35, ease: "easeOut" }}
       className="p-6 font-sans bg-slate-50 dark:bg-slate-950 min-h-screen w-full text-slate-800 dark:text-slate-100 transition-colors"
     >
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      {/* Header with Month Switcher */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             Budget Planner
@@ -293,22 +361,56 @@ function Budget() {
             Setup Income & Plan Category Allocations
           </p>
         </div>
-      </div>{" "}
-      {/* Top Section: Income, Summary, and Chart side by side */}
+
+        {/* Month Selector Controls */}
+        <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1.5 shadow-sm">
+          <button
+            type="button"
+            onClick={handlePrevMonth}
+            className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            title="Previous Month"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <div className="flex items-center gap-2 px-2 relative">
+            <Calendar size={16} className="text-teal-600 dark:text-teal-400 shrink-0" />
+            <span className="text-sm font-extrabold text-slate-800 dark:text-white min-w-[120px] text-center select-none">
+              {monthLabel}
+            </span>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => e.target.value && setSelectedMonth(e.target.value)}
+              className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+              title="Select Month"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleNextMonth}
+            className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            title="Next Month"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      </div>
+
+      {/* Top Section: Income, Summary, and Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-        {/* Monthly Income Form Card (Top-Left) */}
+        {/* Monthly Income Form Card */}
         <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-800/80 relative overflow-hidden flex flex-col justify-between min-h-[220px]">
           <div>
             <div className="flex items-center gap-3 mb-6 relative z-10">
-              <div className="p-3 bg-teal-50 dark:bg-teal-950/20 rounded-2xl text-teal-650 dark:text-teal-400">
+              <div className="p-3 bg-teal-50 dark:bg-teal-950/20 rounded-2xl text-teal-600 dark:text-teal-400">
                 <Coins size={22} />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-slate-855 dark:text-slate-200">
+                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">
                   Monthly Income
                 </h2>
                 <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
-                  Your Total Limit
+                  Target for {monthLabel}
                 </p>
               </div>
             </div>
@@ -333,16 +435,16 @@ function Budget() {
                 type="submit"
                 className="w-full sm:w-auto shrink-0 bg-teal-600 text-white px-6 py-3.5 rounded-2xl font-extrabold text-xs uppercase flex items-center justify-center gap-2 transition-all hover:bg-teal-700 shadow-md cursor-pointer h-[46px]"
               >
-                <Save size={14} /> Update
+                <Save size={14} /> Save
               </button>
             </form>
           </div>
         </div>
 
-        {/* Allocation Overview Status Dashboard (Top-Middle) */}
+        {/* Allocation Overview Status Dashboard */}
         <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-800/80 min-h-[220px] flex flex-col justify-between">
           <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">
-            Allocation Summary
+            Allocation Summary ({monthLabel})
           </h3>
 
           <div className="space-y-4 flex-1 flex flex-col justify-between">
@@ -382,7 +484,7 @@ function Budget() {
 
             {/* Progress Bar */}
             <div className="space-y-1.5">
-              <div className="w-full h-3 bg-slate-105 dark:bg-slate-950 rounded-full overflow-hidden">
+              <div className="w-full h-3 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.min(100, allocationPercentage)}%` }}
@@ -408,7 +510,7 @@ function Budget() {
           </div>
         </div>
 
-        {/* Budget vs Spent Bar Chart (Top-Right) */}
+        {/* Budget vs Spent Bar Chart */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-800/80 flex flex-col justify-between min-h-[220px]">
           <div className="flex items-center justify-between mb-2">
             <div>
@@ -416,7 +518,7 @@ function Budget() {
                 Budget vs. Spent
               </h3>
               <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
-                Category Comparison
+                {monthLabel} Breakdown
               </p>
             </div>
             <div className="bg-indigo-50 dark:bg-indigo-950/20 p-2.5 rounded-2xl text-indigo-600 dark:text-indigo-400">
@@ -428,15 +530,18 @@ function Budget() {
           </div>
         </div>
       </div>
-      {/* Bottom Section: Category Budgets (3-column grid layout below) */}
+
+      {/* Bottom Section: Category Budgets */}
       <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-800/80 w-full">
-        <div className="mb-6">
-          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">
-            Category Budgets
-          </h2>
-          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">
-            Allocate Funds Per Category
-          </p>
+        <div className="mb-6 flex justify-between items-center">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">
+              Category Budgets
+            </h2>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">
+              Allocate Funds for {monthLabel}
+            </p>
+          </div>
         </div>
 
         <form onSubmit={handleSaveBudgets} className="space-y-6">
@@ -446,7 +551,6 @@ function Budget() {
               const spentAmt = categorySpent[cat.id] || 0;
               const limitAmt = parseFloat(tempBudgets[cat.id]) || 0;
 
-              // Compute usage percentage: relative to limit if set, otherwise relative to overall income budget
               const effectiveLimit =
                 limitAmt > 0 ? limitAmt : navamt > 0 ? navamt : 1;
               const usagePercentage = (spentAmt / effectiveLimit) * 100;
@@ -457,7 +561,7 @@ function Budget() {
                   key={cat.id}
                   className="p-4 bg-slate-50/40 dark:bg-slate-950/65 border border-slate-200/60 dark:border-slate-800/80 rounded-[1.5rem] hover:border-teal-500/30 dark:hover:border-teal-500/30 transition-all flex flex-col justify-between gap-3 min-h-[145px] shadow-sm"
                 >
-                  {/* Top section: Icon and Name & Spent */}
+                  {/* Top section */}
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
                       <div
@@ -476,9 +580,8 @@ function Budget() {
                     </div>
                   </div>
 
-                  {/* Middle section: Limit Used text & Mini Horizontal Bar Chart from ChartJS */}
+                  {/* Middle section */}
                   <div className="space-y-1.5 my-1.5">
-                    {/* Limit Used Details (On Top) */}
                     <div className="flex justify-between items-center text-slate-400 dark:text-slate-500 tracking-wider">
                       {limitAmt > 0 ? (
                         <>
@@ -511,7 +614,6 @@ function Budget() {
                       )}
                     </div>
 
-                    {/* Single Line Rounded Progress Bar Track */}
                     <div className="w-full h-3 bg-slate-200/60 dark:bg-slate-800/60 rounded-full overflow-hidden mt-2 mb-1.5">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ease-out ${
@@ -524,9 +626,9 @@ function Budget() {
                     </div>
                   </div>
 
-                  {/* Bottom section: Budget Limit Inputs */}
+                  {/* Bottom section */}
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-555 uppercase tracking-widest">
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                       Limit
                     </span>
 
@@ -539,7 +641,6 @@ function Budget() {
                         <Minus size={10} />
                       </button>
 
-                      {/* Flex-based prefix-aligned input wrapper */}
                       <div className="flex items-center bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1 focus-within:ring-1 focus-within:ring-teal-500 transition-all">
                         <span className="text-slate-400 dark:text-slate-500 text-[10px] font-extrabold mr-1 select-none">
                           ₹
@@ -572,9 +673,9 @@ function Budget() {
           <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end">
             <button
               type="submit"
-              className="bg-slate-900 dark:bg-teal-650 hover:bg-slate-800 dark:hover:bg-teal-600 bg-teal-600 text-white font-extrabold text-xs uppercase px-8 py-3.5 rounded-2xl flex items-center gap-2 shadow-lg shadow-teal-600/10 dark:shadow-none transition-all cursor-pointer"
+              className="bg-slate-900 dark:bg-teal-600 hover:bg-slate-800 dark:hover:bg-teal-500 text-white font-extrabold text-xs uppercase px-8 py-3.5 rounded-2xl flex items-center gap-2 shadow-lg shadow-teal-600/10 dark:shadow-none transition-all cursor-pointer"
             >
-              <Save size={14} /> Save Category Limits
+              <Save size={14} /> Save Category Limits for {monthLabel}
             </button>
           </div>
         </form>

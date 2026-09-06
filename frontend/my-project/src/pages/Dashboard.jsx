@@ -42,7 +42,7 @@ ChartJS.register(
 function Dashboard() {
   const navigate = useNavigate();
   const { expenses } = useContext(Expensecontent);
-  const { navamt } = useContext(Navcontent);
+  const { navamt, getBudgetForMonth } = useContext(Navcontent);
   const [trendRange, setTrendRange] = useState("daily"); // 'daily' | 'weekly' | 'monthly' | 'yearly'
   const [trendSubValue, setTrendSubValue] = useState(
     new Date().toISOString().slice(0, 10),
@@ -367,8 +367,10 @@ function Dashboard() {
             );
           })
           .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+        const dayMonthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const dayBudgetObj = getBudgetForMonth(dayMonthKey);
         expenseData.push(daySpend);
-        incomeData.push(navamt);
+        incomeData.push(dayBudgetObj.income);
       }
     } else if (trendRange === "weekly") {
       for (let i = 3; i >= 0; i--) {
@@ -410,8 +412,11 @@ function Dashboard() {
             return expTs >= startTs && expTs <= endTs;
           })
           .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+
+        const weekMonthKey = `${endDay.getFullYear()}-${String(endDay.getMonth() + 1).padStart(2, "0")}`;
+        const weekBudgetObj = getBudgetForMonth(weekMonthKey);
         expenseData.push(weekSpend);
-        incomeData.push(navamt);
+        incomeData.push(weekBudgetObj.income);
       }
     } else if (trendRange === "monthly") {
       for (let i = 5; i >= 0; i--) {
@@ -434,8 +439,11 @@ function Dashboard() {
             );
           })
           .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+
+        const monthKey = `${targetYear}-${String(targetMonth + 1).padStart(2, "0")}`;
+        const monthBudgetObj = getBudgetForMonth(monthKey);
         expenseData.push(monthSpend);
-        incomeData.push(navamt);
+        incomeData.push(monthBudgetObj.income);
       }
     } else if (trendRange === "yearly") {
       for (let i = 2; i >= 0; i--) {
@@ -448,13 +456,21 @@ function Dashboard() {
             return parsed && parsed.year === targetYear;
           })
           .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+
+        // Sum income budgets for all 12 months of the year
+        let yearBudgetTotal = 0;
+        for (let m = 1; m <= 12; m++) {
+          const mKey = `${targetYear}-${String(m).padStart(2, "0")}`;
+          yearBudgetTotal += getBudgetForMonth(mKey).income;
+        }
+
         expenseData.push(yearSpend);
-        incomeData.push(navamt * 12);
+        incomeData.push(yearBudgetTotal);
       }
     }
 
     return { labels, expenseData, incomeData };
-  }, [expenses, trendRange, trendSubValue, navamt]);
+  }, [expenses, trendRange, trendSubValue, getBudgetForMonth]);
 
   const trendData = {
     labels: trendChartData.labels,
