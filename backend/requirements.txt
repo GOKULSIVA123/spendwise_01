@@ -1,10 +1,26 @@
-Flask==3.1.2
-Flask-Cors==6.0.1
-pymongo==4.10.1
+# FastAPI core framework and ASGI server
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+
+# Async MongoDB driver (replaces pymongo for async operations)
+motor==3.6.0
+
+# Data validation models (replaces manual request.json checks)
+pydantic==2.9.2
+
+# Environment variables
 python-dotenv==1.1.1
+
+# JWT token verification for Clerk Auth
+PyJWT==2.10.0
+cryptography==43.0.3
+
+# DNS + TLS for MongoDB Atlas connection
 dnspython==2.7.0
 certifi==2025.11.12
-gunicorn==23.0.0
+
+# HTTP requests (used in auth for Clerk JWKS public key fetching)
 requests==2.32.3
-PyJWT==2.10.0
+
+# Groq AI SDK (for AI features - future use)
 groq

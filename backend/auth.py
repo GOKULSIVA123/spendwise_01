@@ -1,79 +1,144 @@
+# auth.py
+# This file verifies the Clerk JWT token that the React frontend sends
+# in every API request's Authorization header.
+#
+# HOW IT WORKS:
+# 1. The React frontend calls Clerk's getToken() to get a signed JWT string.
+# 2. React sends: "Authorization: Bearer eyJhbGciOiJSUzI1NiJ9..."
+# 3. This file reads that token, downloads Clerk's public keys (JWKS),
+#    and verifies the token's signature is genuinely from Clerk.
+# 4. If valid, it extracts the user's unique ID ("sub" field) from the token.
+# 5. FastAPI injects this user_id into any route function that uses Depends(get_current_user).
+#
+# DIFFERENCE FROM FLASK:
+# Flask used @token_required as a decorator.
+# FastAPI uses Depends(get_current_user) as a function parameter — much cleaner!
+
 import os
 import requests
-from flask import json, jsonify, request
-from functools import wraps
 import jwt
 from jwt import algorithms as jwt_algorithms
 from jwt.exceptions import PyJWTError
 from dotenv import load_dotenv
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 load_dotenv()
 
-CLERK_FRONTEND_API = os.getenv("CLERK_FRONTEND_API")
 CLERK_JWKS_URL = os.getenv("CLERK_JWKS_URL")
-PUBLIC_KEYS = {}
+CLERK_ISSUER_URL = os.getenv("CLERK_FRONTEND_API")   # Same as CLERK_FRONTEND_API
+
+# Cache for Clerk's public RSA keys — fetched once, reused for all requests
+_PUBLIC_KEYS: dict = {}
+
+# HTTPBearer tells FastAPI to automatically read the "Authorization: Bearer <token>"
+# header from every incoming request
+security = HTTPBearer()
 
 
-def get_publickey():
-    if PUBLIC_KEYS:
-        return PUBLIC_KEYS
+def _get_public_keys() -> dict:
+    """
+    Downloads Clerk's public JSON Web Key Set (JWKS) from the Clerk dashboard URL.
+    These public keys are used to verify the JWT token signature.
+    Keys are cached in memory so we don't make a network request on every API call.
+    """
+    global _PUBLIC_KEYS
+
+    # Return cached keys if already loaded
+    if _PUBLIC_KEYS:
+        return _PUBLIC_KEYS
+
     try:
-        response = requests.get(CLERK_JWKS_URL)
+        response = requests.get(CLERK_JWKS_URL, timeout=10)
         response.raise_for_status()
         jwks = response.json()
-        print(jwks)
+
+        # Convert each JWK key object into a Python RSA public key object
         for key in jwks.get("keys", []):
-            kid = key.get("kid")
-            print("key", key)
-            public_key = jwt_algorithms.RSAAlgorithm.from_jwk(json.dumps(key))
-            PUBLIC_KEYS[kid] = public_key
+            kid = key.get("kid")  # "kid" = key identifier
+            public_key = jwt_algorithms.RSAAlgorithm.from_jwk(key)
+            _PUBLIC_KEYS[kid] = public_key
+
+        print(f"✅ Loaded {len(_PUBLIC_KEYS)} Clerk public key(s)")
     except Exception as e:
-        print(f"ERROR: Invalid JWKS structure or processing error: {e}")
-        return None
-    return PUBLIC_KEYS
-def token_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        # 1. Get Bearer token
-        auth_header = request.headers.get("Authorization")
-        if not auth_header or not auth_header.startswith("Bearer "):
-            return jsonify({"message": "Authorization token is missing or invalid!"}), 401
-        print(auth_header)
-        token = auth_header.split(" ", 1)[1]
+        print(f"❌ Failed to load Clerk JWKS public keys: {e}")
 
-        try:
-            # 2. Load public keys
-            keys = get_publickey()
-            if not keys:
-                return jsonify({"message": "Could not fetch public keys for verification."}), 500
+    return _PUBLIC_KEYS
 
-            # 3. Get kid from header
-            unverified_header = jwt.get_unverified_header(token)
-            kid = unverified_header.get("kid")
-            public_key = keys.get(kid)
-            if public_key is None:
-                return jsonify({"message": "Invalid token: Signing key not found."}), 401
-            issuer_url = os.getenv("CLERK_ISSUER_URL")
-            payload = jwt.decode(
-                token,
-                public_key,
-                algorithms=["RS256"],
-                options={"verify_aud": False}, # Clerk often doesn't use aud for frontend tokens
-                issuer=issuer_url, # Will verify if issuer_url is not None
-                leeway=60 # Allow 60 seconds of clock skew
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+) -> str:
+    """
+    FastAPI Security Dependency — runs automatically on every protected route.
+
+    How to use in a route:
+        @router.get("/api/expenses")
+        async def list_expenses(user_id: str = Depends(get_current_user)):
+            # user_id is now the Clerk user ID (e.g. "user_2pX...")
+
+    Returns:
+        str: The authenticated Clerk user's unique ID (the "sub" field from JWT payload).
+
+    Raises:
+        HTTPException 401: If token is missing, expired, or fails signature verification.
+    """
+    token = credentials.credentials  # Extract raw JWT string from "Bearer <token>"
+
+    try:
+        # Load Clerk's public keys for signature verification
+        keys = _get_public_keys()
+        if not keys:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Could not fetch Clerk public keys for verification."
             )
-            # 5. Attach user id to request
-            request.user_id = payload.get("sub")
 
-        except jwt.ExpiredSignatureError as e:
-            print(f"Auth Error (Expired): {e}")
-            return jsonify({"message": "Token has expired. Please log in again."}), 401
-        except PyJWTError as e:
-            print(f"Auth Error (Verification): {e}")
-            return jsonify({"message": f"Token verification failed: {str(e)}"}), 401
-        except Exception as e:
-            print(f"Auth Error (General): {e}")
-            return jsonify({"message": "Internal verification error."}), 500
+        # Read the "kid" (key ID) from the JWT header to select the correct public key
+        unverified_header = jwt.get_unverified_header(token)
+        kid = unverified_header.get("kid")
+        public_key = keys.get(kid)
 
-        return f(*args, **kwargs)
-    return decorated
+        if public_key is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token: signing key not found."
+            )
+
+        # Verify and decode the JWT token using the RSA public key
+        payload = jwt.decode(
+            token,
+            public_key,
+            algorithms=["RS256"],
+            options={"verify_aud": False},  # Clerk frontend tokens don't use "aud"
+            issuer=CLERK_ISSUER_URL,
+            leeway=60,                      # Allow 60 seconds of clock skew
+        )
+
+        # Extract and return the Clerk user ID from the token payload
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token payload: missing user ID."
+            )
+
+        return user_id
+
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired. Please log in again."
+        )
+    except PyJWTError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Token verification failed: {str(e)}"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal auth error: {str(e)}"
+        )
