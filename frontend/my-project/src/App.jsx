@@ -10,6 +10,7 @@ import Home from "./pages/HomePage";
 import AuthPage from "./pages/AuthPage";
 import Budget from "./pages/Budget";
 import Transactions from "./pages/Transactions";
+import Categories from "./pages/Categories";
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
                 <Route path="/Expense" element={<Expense />} />
                 <Route path="/Budget" element={<Budget />} />
                 <Route path="/Transactions" element={<Transactions />} />
+                <Route path="/Categories" element={<Categories />} />
               </Routes>
             </main>
           </div>

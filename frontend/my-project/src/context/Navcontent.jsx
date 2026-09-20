@@ -3,6 +3,57 @@ import { toast } from "sonner";
 
 export const Navcontent = createContext(null);
 
+export const DEFAULT_CATEGORIES = [
+  {
+    id: "Food",
+    label: "Food",
+    icon: "Utensils",
+    color: "#10b981",
+    bg: "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400",
+    desc: "Restaurants, groceries, snacks & daily dining",
+  },
+  {
+    id: "Transport",
+    label: "Transport",
+    icon: "Car",
+    color: "#3b82f6",
+    bg: "bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400",
+    desc: "Cab, metro, fuel, bus & flight tickets",
+  },
+  {
+    id: "Shopping",
+    label: "Shopping",
+    icon: "ShoppingBag",
+    color: "#a855f7",
+    bg: "bg-purple-50 text-purple-600 dark:bg-purple-950/30 dark:text-purple-400",
+    desc: "Apparel, electronics, gadgets & lifestyle",
+  },
+  {
+    id: "Entertainment",
+    label: "Entertainment",
+    icon: "Film",
+    color: "#ec4899",
+    bg: "bg-pink-50 text-pink-600 dark:bg-pink-950/30 dark:text-pink-400",
+    desc: "Movies, concerts, OTT streaming & gaming",
+  },
+  {
+    id: "Utilities",
+    label: "Utilities",
+    icon: "Zap",
+    color: "#f59e0b",
+    bg: "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400",
+    desc: "Electricity, wi-fi, mobile recharges & rent",
+  },
+  {
+    id: "Other",
+    label: "Other",
+    icon: "HelpCircle",
+    color: "#64748b",
+    bg: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
+    desc: "Miscellaneous & unexpected expenses",
+  },
+];
+
 const DEFAULT_CATEGORY_BUDGETS = {
   Food: 0,
   Transport: 0,
@@ -22,6 +73,48 @@ const getCurrentMonthKey = () => {
 export const NavProvider = ({ children }) => {
   const [activeMonthKey, setActiveMonthKey] = useState(getCurrentMonthKey());
   const [target1, setTarget1] = useState(0);
+
+  // Global user categories state (presets + custom added ones)
+  const [userCategories, setUserCategories] = useState(() => {
+    const saved = localStorage.getItem("spendwise_user_categories");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Failed to parse saved user categories", e);
+      }
+    }
+    return DEFAULT_CATEGORIES;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(
+      "spendwise_user_categories",
+      JSON.stringify(userCategories),
+    );
+  }, [userCategories]);
+
+  const addCustomCategory = (categoryObj) => {
+    setUserCategories((prev) => {
+      if (
+        prev.some(
+          (c) => c.id.toLowerCase() === categoryObj.id.toLowerCase(),
+        )
+      ) {
+        return prev;
+      }
+      return [...prev, categoryObj];
+    });
+    addNotification(
+      `Category "${categoryObj.label}" added successfully!`,
+      "success",
+    );
+  };
+
+  const deleteCustomCategory = (catId) => {
+    setUserCategories((prev) => prev.filter((c) => c.id !== catId));
+    addNotification(`Category removed.`, "info");
+  };
 
   // Month-keyed storage for budgets: { "2026-09": { income: 50000, categories: { Food: 10000, ... } } }
   const [monthlyBudgets, setMonthlyBudgets] = useState(() => {
@@ -44,7 +137,10 @@ export const NavProvider = ({ children }) => {
 
     if (oldCategory) {
       try {
-        initialCategories = { ...DEFAULT_CATEGORY_BUDGETS, ...JSON.parse(oldCategory) };
+        initialCategories = {
+          ...DEFAULT_CATEGORY_BUDGETS,
+          ...JSON.parse(oldCategory),
+        };
       } catch (e) {
         console.error("Failed to parse old category_budgets", e);
       }
@@ -75,7 +171,10 @@ export const NavProvider = ({ children }) => {
 
   // Sync monthlyBudgets object to localStorage
   useEffect(() => {
-    localStorage.setItem("monthly_budgets_by_month", JSON.stringify(monthlyBudgets));
+    localStorage.setItem(
+      "monthly_budgets_by_month",
+      JSON.stringify(monthlyBudgets),
+    );
   }, [monthlyBudgets]);
 
   // Sync notifications to localStorage
@@ -94,7 +193,10 @@ export const NavProvider = ({ children }) => {
       const latestAvailableKey = sortedMonthKeys[sortedMonthKeys.length - 1];
       return {
         income: monthlyBudgets[latestAvailableKey]?.income || 0,
-        categories: { ...DEFAULT_CATEGORY_BUDGETS, ...(monthlyBudgets[latestAvailableKey]?.categories || {}) },
+        categories: {
+          ...DEFAULT_CATEGORY_BUDGETS,
+          ...(monthlyBudgets[latestAvailableKey]?.categories || {}),
+        },
         isInherited: true,
       };
     }
@@ -138,7 +240,10 @@ export const NavProvider = ({ children }) => {
   const setCategoryBudgets = (newCategories) => {
     saveBudgetForMonth(activeMonthKey, {
       income: navamt,
-      categories: typeof newCategories === "function" ? newCategories(categoryBudgets) : newCategories,
+      categories:
+        typeof newCategories === "function"
+          ? newCategories(categoryBudgets)
+          : newCategories,
     });
   };
 
@@ -185,6 +290,9 @@ export const NavProvider = ({ children }) => {
     addNotification,
     markAllNotificationsAsRead,
     clearNotifications,
+    userCategories,
+    addCustomCategory,
+    deleteCustomCategory,
   };
 
   return <Navcontent.Provider value={value}>{children}</Navcontent.Provider>;

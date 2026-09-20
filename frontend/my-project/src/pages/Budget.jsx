@@ -24,24 +24,15 @@ import { Navcontent } from "../context/Navcontent";
 import { Expensecontent } from "../context/Expensecontent";
 import { toast } from "sonner";
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-} from "chart.js";
-import { Bar } from "react-chartjs-2";
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-);
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  Legend as RechartsLegend,
+  CartesianGrid,
+} from "recharts";
 
 const formatCurrency = (val) => {
   return `₹${(val || 0).toLocaleString("en-IN")}`;
@@ -277,72 +268,63 @@ function Budget() {
   const remainingUnallocated = navamt - totalAllocated;
   const allocationPercentage = navamt > 0 ? (totalAllocated / navamt) * 100 : 0;
 
-  // --- Chart Data ---
-  const barChartData = useMemo(() => {
-    const labels = categoriesList.map((cat) => cat.label);
-    const budgetData = categoriesList.map(
-      (cat) => parseFloat(tempBudgets[cat.id]) || 0,
-    );
-    const spentData = categoriesList.map((cat) => categorySpent[cat.id] || 0);
+  // --- Recharts Data & Tooltip ---
+  const rechartsBudgetData = useMemo(() => {
+    return categoriesList.map((cat) => ({
+      name: cat.label,
+      allocated: parseFloat(tempBudgets[cat.id]) || 0,
+      spent: categorySpent[cat.id] || 0,
+    }));
+  }, [categoriesList, tempBudgets, categorySpent]);
 
-    return {
-      labels,
-      datasets: [
-        {
-          label: "Allocated",
-          data: budgetData,
-          backgroundColor: "#6366f1", // Indigo 500
-          borderRadius: 6,
-        },
-        {
-          label: "Spent",
-          data: spentData,
-          backgroundColor: "#10b981", // Emerald 500
-          borderRadius: 6,
-        },
-      ],
-    };
-  }, [tempBudgets, categorySpent]);
+  const CustomBudgetTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      const allocated =
+        payload.find((p) => p.dataKey === "allocated")?.value || 0;
+      const spent = payload.find((p) => p.dataKey === "spent")?.value || 0;
+      const isOver = spent > allocated && allocated > 0;
 
-  const barChartOptions = useMemo(() => {
-    return {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: "bottom",
-          labels: {
-            font: { family: "Poppins, sans-serif", size: 8, weight: "bold" },
-            color: "#64748b",
-            boxWidth: 8,
-            padding: 8,
-          },
-        },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => ` ${ctx.dataset.label}: ₹${ctx.raw.toLocaleString()}`,
-          },
-        },
-      },
-      scales: {
-        x: {
-          grid: { display: false },
-          ticks: {
-            font: { family: "Poppins, sans-serif", size: 8, weight: "bold" },
-            color: "#94a3b8",
-          },
-        },
-        y: {
-          grid: { color: "rgba(226, 232, 240, 0.4)" },
-          ticks: {
-            font: { family: "Poppins, sans-serif", size: 8 },
-            color: "#94a3b8",
-            callback: (val) => `₹${val}`,
-          },
-        },
-      },
-    };
-  }, []);
+      return (
+        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-3 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 text-xs space-y-1.5 min-w-[150px]">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-1">
+            <span className="font-extrabold text-slate-800 dark:text-slate-100">
+              {label}
+            </span>
+            <span
+              className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                isOver
+                  ? "bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400"
+                  : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400"
+              }`}
+            >
+              {isOver ? "Over Budget" : "On Track"}
+            </span>
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-sm bg-indigo-500 inline-block" />
+                Allocated:
+              </span>
+              <span className="font-bold text-slate-900 dark:text-slate-100">
+                {formatCurrency(allocated)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-sm bg-emerald-500 inline-block" />
+                Spent:
+              </span>
+              <span className="font-bold text-slate-900 dark:text-slate-100">
+                {formatCurrency(spent)}
+              </span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <motion.div
@@ -525,8 +507,59 @@ function Budget() {
               <BarChart3 size={18} />
             </div>
           </div>
-          <div className="h-[125px] w-full flex items-center justify-center">
-            <Bar data={barChartData} options={barChartOptions} />
+          <div className="h-[140px] w-full mt-1">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={rechartsBudgetData}
+                margin={{ top: 5, right: 5, left: -25, bottom: 0 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="rgba(148, 163, 184, 0.15)"
+                />
+                <XAxis
+                  dataKey="name"
+                  tickLine={false}
+                  axisLine={{ stroke: "rgba(148, 163, 184, 0.2)" }}
+                  tick={{ fill: "#94a3b8", fontSize: 9, fontWeight: 700 }}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fill: "#94a3b8", fontSize: 9 }}
+                  tickFormatter={(val) =>
+                    val >= 1000 ? `₹${(val / 1000).toFixed(0)}k` : `₹${val}`
+                  }
+                />
+                <RechartsTooltip content={<CustomBudgetTooltip />} />
+                <RechartsLegend
+                  verticalAlign="top"
+                  align="right"
+                  iconType="circle"
+                  iconSize={6}
+                  wrapperStyle={{
+                    paddingBottom: "4px",
+                    fontSize: "9px",
+                    fontWeight: "700",
+                  }}
+                />
+                <Bar
+                  dataKey="allocated"
+                  name="Allocated"
+                  fill="#6366f1"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={16}
+                />
+                <Bar
+                  dataKey="spent"
+                  name="Spent"
+                  fill="#10b981"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={16}
+                />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>

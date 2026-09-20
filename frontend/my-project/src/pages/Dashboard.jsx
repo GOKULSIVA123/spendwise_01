@@ -3,16 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { Expensecontent } from "../context/Expensecontent";
 import { Navcontent } from "../context/Navcontent";
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-} from "chart.js";
-import { Bar, Doughnut } from "react-chartjs-2";
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  Legend as RechartsLegend,
+  CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 import { motion } from "framer-motion";
 import {
   Wallet,
@@ -28,16 +30,98 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-// --- 1. Register ChartJS Components ---
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-);
+// Category Color Palette for Charts & UI
+const CATEGORY_COLORS = {
+  Food: "#10b981", // Emerald 500
+  Transport: "#3b82f6", // Blue 500
+  Shopping: "#a855f7", // Purple 500
+  Entertainment: "#ec4899", // Pink 500
+  Utilities: "#f59e0b", // Amber 500
+  Other: "#64748b", // Slate 500
+};
+
+const formatCurrency = (val) =>
+  `₹${(val || 0).toLocaleString("en-IN", { minimumFractionDigits: 0 })}`;
+
+// --- Custom Recharts Tooltip for Trend Bar Chart ---
+const CustomTrendTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    const income = payload.find((p) => p.dataKey === "income")?.value || 0;
+    const expense = payload.find((p) => p.dataKey === "expense")?.value || 0;
+    const net = income - expense;
+
+    return (
+      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-3.5 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 text-xs font-sans space-y-2 min-w-[170px]">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-1.5">
+          <span className="font-extrabold text-slate-800 dark:text-slate-100">
+            {label}
+          </span>
+          <span
+            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+              net >= 0
+                ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400"
+                : "bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400"
+            }`}
+          >
+            {net >= 0 ? "Under" : "Over"}
+          </span>
+        </div>
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block" />
+              Budget:
+            </span>
+            <span className="font-bold text-slate-900 dark:text-slate-100">
+              {formatCurrency(income)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-sm bg-rose-500 inline-block" />
+              Spent:
+            </span>
+            <span className="font-bold text-slate-900 dark:text-slate-100">
+              {formatCurrency(expense)}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
+// --- Custom Recharts Tooltip for Category Donut Chart ---
+const CustomPieTooltip = ({ active, payload, totalSpent }) => {
+  if (active && payload && payload.length) {
+    const data = payload[0];
+    const percentage =
+      totalSpent > 0 ? ((data.value / totalSpent) * 100).toFixed(1) : 0;
+    return (
+      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-3.5 py-2.5 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 text-xs space-y-1">
+        <div className="flex items-center gap-2">
+          <span
+            className="w-2.5 h-2.5 rounded-full"
+            style={{ backgroundColor: data.payload.color }}
+          />
+          <span className="font-bold text-slate-800 dark:text-slate-200">
+            {data.name}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-4 text-slate-600 dark:text-slate-400">
+          <span className="font-extrabold text-slate-900 dark:text-slate-100">
+            {formatCurrency(data.value)}
+          </span>
+          <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
+            ({percentage}%)
+          </span>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -75,7 +159,7 @@ function Dashboard() {
     }
   };
 
-  // --- 2. CALCULATIONS ---
+  // --- CALCULATIONS ---
   const currentMonthExpenses = useMemo(() => {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
@@ -113,90 +197,20 @@ function Dashboard() {
     }, {});
   }, [currentMonthExpenses]);
 
-  const labels = useMemo(() => Object.keys(categoryTotals), [categoryTotals]);
-  const dataValues = useMemo(
-    () => Object.values(categoryTotals),
-    [categoryTotals],
-  );
+  // Recharts Donut Data
+  const pieChartData = useMemo(() => {
+    return Object.entries(categoryTotals).map(([name, value]) => ({
+      name,
+      value,
+      color: CATEGORY_COLORS[name] || "#64748b",
+    }));
+  }, [categoryTotals]);
 
   const currentMonthName = useMemo(() => {
     return new Date().toLocaleString("en-US", { month: "long" });
   }, []);
 
-  const barData = {
-    labels: labels,
-    datasets: [
-      {
-        label: "Expenses",
-        data: dataValues,
-        backgroundColor: [
-          "#6366f1", // Indigo 500
-          "#ec4899", // Pink 500
-          "#10b981", // Emerald 500
-          "#f59e0b", // Amber 500
-          "#3b82f6", // Blue 500
-        ],
-        borderRadius: 8,
-      },
-    ],
-  };
-
-  const barOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      title: { display: false },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        grid: { color: "#f1f5f9" },
-        ticks: { font: { family: "Poppins", size: 10 } },
-      },
-      x: {
-        grid: { display: false },
-        ticks: { font: { family: "Poppins", size: 10 } },
-      },
-    },
-  };
-
-  // B) Doughnut Data
-  const doughnutData = {
-    labels: labels,
-    datasets: [
-      {
-        data: dataValues,
-        backgroundColor: [
-          "#6366f1",
-          "#ec4899",
-          "#10b981",
-          "#f59e0b",
-          "#3b82f6",
-        ],
-        borderColor: "#ffffff",
-        borderWidth: 2,
-      },
-    ],
-  };
-
-  const doughnutOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: "bottom",
-        labels: { font: { family: "Poppins", size: 10 } },
-      },
-    },
-  };
-
-  // C) Today's Expenses Data
-  const expensesToday = expenses.filter(
-    (expense) => expense.date === new Date().toISOString().slice(0, 10),
-  );
-
-  // D) Filtered Expenses for Transactions List based on Floating Filter Node
+  // Filtered Expenses for Transactions List
   const filteredExpenses = useMemo(() => {
     if (!trendSubValue) return expenses;
 
@@ -259,7 +273,11 @@ function Dashboard() {
       return expenses.filter((e) => {
         const parsed = parseExpenseDate(e.date);
         if (!parsed) return false;
-        const expTs = new Date(parsed.year, parsed.month, parsed.day).getTime();
+        const expTs = new Date(
+          parsed.year,
+          parsed.month,
+          parsed.day,
+        ).getTime();
         return expTs >= startTs && expTs <= endTs;
       });
     }
@@ -279,21 +297,21 @@ function Dashboard() {
         "Nov",
         "Dec",
       ];
-      const targetMonth = monthNames.indexOf(trendSubValue);
-      if (targetMonth === -1) return expenses;
-      const targetYear = new Date().getFullYear();
-
-      return expenses.filter((e) => {
-        const parsed = parseExpenseDate(e.date);
-        return (
-          parsed && parsed.month === targetMonth && parsed.year === targetYear
-        );
-      });
+      const targetMonthIndex = monthNames.indexOf(trendSubValue);
+      if (targetMonthIndex !== -1) {
+        return expenses.filter((e) => {
+          const parsed = parseExpenseDate(e.date);
+          return (
+            parsed &&
+            parsed.month === targetMonthIndex &&
+            parsed.year === new Date().getFullYear()
+          );
+        });
+      }
     }
 
     if (trendRange === "yearly") {
       const targetYear = parseInt(trendSubValue);
-      if (isNaN(targetYear)) return expenses;
       return expenses.filter((e) => {
         const parsed = parseExpenseDate(e.date);
         return parsed && parsed.year === targetYear;
@@ -303,12 +321,10 @@ function Dashboard() {
     return expenses;
   }, [expenses, trendRange, trendSubValue]);
 
-  // E) Multi-option Trend Data (Daily, Weekly, Monthly, Yearly)
-  const trendChartData = useMemo(() => {
+  // Recharts Multi-option Trend Data (Daily, Weekly, Monthly, Yearly)
+  const rechartsTrendData = useMemo(() => {
     const todayDate = new Date();
-    const labels = [];
-    const expenseData = [];
-    const incomeData = [];
+    const data = [];
 
     const parseExpenseDate = (dateStr) => {
       if (!dateStr) return null;
@@ -331,7 +347,6 @@ function Dashboard() {
     };
 
     if (trendRange === "daily") {
-      // Daily defaults to selected day trendSubValue, displaying 7 days leading up to it
       let baseDate = new Date();
       if (trendSubValue) {
         const parts = trendSubValue.split("-");
@@ -354,7 +369,6 @@ function Dashboard() {
           weekday: "short",
           day: "numeric",
         });
-        labels.push(dayLabel);
 
         const daySpend = expenses
           .filter((e) => {
@@ -367,10 +381,15 @@ function Dashboard() {
             );
           })
           .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+
         const dayMonthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
         const dayBudgetObj = getBudgetForMonth(dayMonthKey);
-        expenseData.push(daySpend);
-        incomeData.push(dayBudgetObj.income);
+
+        data.push({
+          name: dayLabel,
+          income: dayBudgetObj.income,
+          expense: daySpend,
+        });
       }
     } else if (trendRange === "weekly") {
       for (let i = 3; i >= 0; i--) {
@@ -378,8 +397,6 @@ function Dashboard() {
         startDay.setDate(todayDate.getDate() - (i * 7 + 6));
         const endDay = new Date();
         endDay.setDate(todayDate.getDate() - i * 7);
-
-        labels.push(`Week ${4 - i}`);
 
         const startTs = new Date(
           startDay.getFullYear(),
@@ -415,16 +432,19 @@ function Dashboard() {
 
         const weekMonthKey = `${endDay.getFullYear()}-${String(endDay.getMonth() + 1).padStart(2, "0")}`;
         const weekBudgetObj = getBudgetForMonth(weekMonthKey);
-        expenseData.push(weekSpend);
-        incomeData.push(weekBudgetObj.income);
+
+        data.push({
+          name: `Week ${4 - i}`,
+          income: weekBudgetObj.income,
+          expense: weekSpend,
+        });
       }
     } else if (trendRange === "monthly") {
       for (let i = 5; i >= 0; i--) {
         const d = new Date();
-        d.setDate(1); // avoid 31st overflow bug
+        d.setDate(1);
         d.setMonth(todayDate.getMonth() - i);
         const monthLabel = d.toLocaleDateString("en-US", { month: "short" });
-        labels.push(monthLabel);
 
         const targetMonth = d.getMonth();
         const targetYear = d.getFullYear();
@@ -442,13 +462,16 @@ function Dashboard() {
 
         const monthKey = `${targetYear}-${String(targetMonth + 1).padStart(2, "0")}`;
         const monthBudgetObj = getBudgetForMonth(monthKey);
-        expenseData.push(monthSpend);
-        incomeData.push(monthBudgetObj.income);
+
+        data.push({
+          name: monthLabel,
+          income: monthBudgetObj.income,
+          expense: monthSpend,
+        });
       }
     } else if (trendRange === "yearly") {
       for (let i = 2; i >= 0; i--) {
         const targetYear = todayDate.getFullYear() - i;
-        labels.push(targetYear.toString());
 
         const yearSpend = expenses
           .filter((e) => {
@@ -457,70 +480,22 @@ function Dashboard() {
           })
           .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
 
-        // Sum income budgets for all 12 months of the year
         let yearBudgetTotal = 0;
         for (let m = 1; m <= 12; m++) {
           const mKey = `${targetYear}-${String(m).padStart(2, "0")}`;
           yearBudgetTotal += getBudgetForMonth(mKey).income;
         }
 
-        expenseData.push(yearSpend);
-        incomeData.push(yearBudgetTotal);
+        data.push({
+          name: targetYear.toString(),
+          income: yearBudgetTotal,
+          expense: yearSpend,
+        });
       }
     }
 
-    return { labels, expenseData, incomeData };
+    return data;
   }, [expenses, trendRange, trendSubValue, getBudgetForMonth]);
-
-  const trendData = {
-    labels: trendChartData.labels,
-    datasets: [
-      {
-        label: "Income Budget",
-        data: trendChartData.incomeData,
-        backgroundColor: "#10b981", // Emerald 500
-        borderRadius: 4,
-        barPercentage: 0.85,
-        categoryPercentage: 0.85,
-      },
-      {
-        label: "Actual Expense",
-        data: trendChartData.expenseData,
-        backgroundColor: "#f43f5e", // Rose 500
-        borderRadius: 4,
-        barPercentage: 0.85,
-        categoryPercentage: 0.85,
-      },
-    ],
-  };
-
-  const trendOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: true,
-        position: "top",
-        labels: {
-          font: { family: "Poppins, sans-serif", size: 9, weight: "bold" },
-          color: "#94a3b8",
-          boxWidth: 10,
-        },
-      },
-      title: { display: false },
-    },
-    scales: {
-      y: {
-        display: true,
-        grid: { color: "rgba(148, 163, 184, 0.05)" },
-        ticks: { font: { size: 9 }, color: "#94a3b8" },
-      },
-      x: {
-        grid: { display: false },
-        ticks: { font: { size: 9 }, color: "#94a3b8" },
-      },
-    },
-  };
 
   // --- Animation Variants ---
   const containerVariants = {
@@ -536,11 +511,6 @@ function Dashboard() {
     show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 50 } },
   };
 
-  // Format Helper
-  const formatCurrency = (val) =>
-    `₹${(val || 0).toLocaleString(undefined, { minimumFractionDigits: 0 })}`;
-
-  // --- Render ---
   return (
     <motion.div
       variants={containerVariants}
@@ -603,112 +573,127 @@ function Dashboard() {
               {formatCurrency(totalamt)}
             </p>
           </div>
-          <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/20 text-rose-500 dark:text-rose-400 group-hover:bg-rose-500 dark:group-hover:bg-rose-500 group-hover:text-white transition-colors">
-            <ArrowUpCircle size={24} />
+          <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/20 text-rose-500 dark:text-rose-400 group-hover:bg-rose-500 group-hover:text-white transition-colors">
+            <ArrowDownCircle size={24} />
           </div>
         </div>
 
-        {/* Remaining */}
+        {/* Remaining Balance */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800/80 flex items-center justify-between group transition-all hover:shadow-md">
           <div className="space-y-1">
             <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
               Remaining Balance
             </h3>
-            <p className="text-3xl font-extrabold tracking-tight text-emerald-500 dark:text-emerald-400">
+            <p
+              className={`text-3xl font-extrabold tracking-tight ${
+                remainingBalance >= 0
+                  ? "text-emerald-500 dark:text-emerald-400"
+                  : "text-amber-500 dark:text-amber-400"
+              }`}
+            >
               {formatCurrency(remainingBalance)}
             </p>
           </div>
-          <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500 dark:text-emerald-400 group-hover:bg-emerald-500 dark:group-hover:bg-emerald-500 group-hover:text-white transition-colors">
-            <ArrowDownCircle size={24} />
+          <div
+            className={`p-4 rounded-2xl transition-colors ${
+              remainingBalance >= 0
+                ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500 dark:text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white"
+                : "bg-amber-50 dark:bg-amber-950/20 text-amber-500 dark:text-amber-400 group-hover:bg-amber-500 group-hover:text-white"
+            }`}
+          >
+            <ArrowUpCircle size={24} />
           </div>
         </div>
       </motion.div>
 
+      {/* --- Main Dashboard Content Grid --- */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* --- Main Content Left (2 Cols) --- */}
+        {/* --- Main Chart & Activity (2 Cols) --- */}
         <div className="lg:col-span-2 flex flex-col gap-8">
-          {/* Spending Trend Card */}
+          {/* Multi-Option Trend Chart (Recharts) */}
           <motion.div
             variants={itemVariants}
-            className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800/80 relative overflow-hidden"
+            className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800/80"
           >
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <div>
                 <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">
-                  Spending Trend
+                  Analytics & Trends
                 </h2>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
-                  {trendRange === "daily"
-                    ? `Last 7 Days (Focus: ${trendSubValue})`
-                    : trendRange === "weekly"
-                      ? `Last 4 Weeks (Focus: ${trendSubValue})`
-                      : trendRange === "monthly"
-                        ? `Last 6 Months (Focus: ${trendSubValue})`
-                        : `Last 3 Years (Focus: ${trendSubValue})`}
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">
+                  Budget vs. Actual Spending
                 </p>
               </div>
 
-              {/* Compact Filters in Top-Right */}
-              <div className="flex flex-wrap items-center gap-3 bg-slate-50 dark:bg-slate-950 p-2 rounded-2xl border border-slate-100/80 dark:border-slate-800/80 shadow-sm self-start lg:self-center">
-                {/* Timeframe Selector Pills */}
-                <div className="flex bg-white dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200/50 dark:border-slate-800/80 shadow-sm">
-                  {[
-                    { id: "yearly", label: "Year" },
-                    { id: "monthly", label: "Month" },
-                    { id: "weekly", label: "Week" },
-                    { id: "daily", label: "Daily" },
-                  ].map((tab) => (
+              {/* Timeframe & Nested Scope Selectors */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="bg-slate-50 dark:bg-slate-950 p-1 rounded-xl flex items-center gap-1 border border-slate-100 dark:border-slate-800/80">
+                  {["daily", "weekly", "monthly", "yearly"].map((range) => (
                     <button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => handleRangeChange(tab.id)}
-                      className={`px-2.5 py-1 rounded text-[9px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
-                        trendRange === tab.id
-                          ? "bg-teal-600 text-white font-bold"
-                          : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                      key={range}
+                      onClick={() => handleRangeChange(range)}
+                      className={`px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+                        trendRange === range
+                          ? "bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 shadow-sm"
+                          : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
                       }`}
                     >
-                      {tab.label}
+                      {range}
                     </button>
                   ))}
                 </div>
 
-                {/* Vertical Divider */}
-                <div className="hidden sm:block w-[1px] h-4 bg-slate-200 dark:bg-slate-800"></div>
-
-                {/* Sub-option Selection Area */}
-                <div className="flex items-center min-w-[90px]">
+                {/* Sub-selector Filter */}
+                <div className="bg-slate-50 dark:bg-slate-950 px-2 py-1 rounded-xl border border-slate-100 dark:border-slate-800/80 flex items-center">
                   {trendRange === "daily" ? (
                     <input
                       type="date"
                       value={trendSubValue}
                       onChange={(e) => setTrendSubValue(e.target.value)}
-                      className="px-2 py-0.5 bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/80 rounded text-[9px] font-bold text-slate-700 dark:text-slate-200 cursor-pointer outline-none focus:ring-1 focus:ring-teal-500"
+                      className="bg-transparent text-[11px] font-bold text-slate-700 dark:text-slate-200 border-none outline-none cursor-pointer"
                     />
+                  ) : trendRange === "yearly" ? (
+                    <select
+                      value={trendSubValue}
+                      onChange={(e) => setTrendSubValue(e.target.value)}
+                      className="bg-transparent text-[11px] font-bold text-slate-700 dark:text-slate-200 border-none outline-none cursor-pointer pr-1"
+                    >
+                      {[
+                        new Date().getFullYear().toString(),
+                        (new Date().getFullYear() - 1).toString(),
+                        (new Date().getFullYear() - 2).toString(),
+                      ].map((yr) => (
+                        <option
+                          key={yr}
+                          value={yr}
+                          className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
+                        >
+                          {yr}
+                        </option>
+                      ))}
+                    </select>
                   ) : (
                     <select
                       value={trendSubValue}
                       onChange={(e) => setTrendSubValue(e.target.value)}
-                      className="w-full px-2 py-0.5 bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/80 rounded text-[9px] font-bold text-slate-700 dark:text-slate-200 cursor-pointer outline-none focus:ring-1 focus:ring-teal-500 max-h-[30px]"
+                      className="bg-transparent text-[11px] font-bold text-slate-700 dark:text-slate-200 border-none outline-none cursor-pointer pr-1"
                     >
-                      {(trendRange === "yearly"
-                        ? ["2024", "2025", "2026"]
-                        : trendRange === "monthly"
-                          ? [
-                              "Jan",
-                              "Feb",
-                              "Mar",
-                              "Apr",
-                              "May",
-                              "Jun",
-                              "Jul",
-                              "Aug",
-                              "Sep",
-                              "Oct",
-                              "Nov",
-                              "Dec",
-                            ]
-                          : ["Week 1", "Week 2", "Week 3", "Week 4"]
+                      {(trendRange === "monthly"
+                        ? [
+                            "Jan",
+                            "Feb",
+                            "Mar",
+                            "Apr",
+                            "May",
+                            "Jun",
+                            "Jul",
+                            "Aug",
+                            "Sep",
+                            "Oct",
+                            "Nov",
+                            "Dec",
+                          ]
+                        : ["Week 1", "Week 2", "Week 3", "Week 4"]
                       ).map((subOpt) => (
                         <option
                           key={subOpt}
@@ -724,9 +709,70 @@ function Dashboard() {
               </div>
             </div>
 
-            {/* Chart (Now 100% width, preventing ChartJS squeezing) */}
-            <div className="h-[220px] w-full mt-4">
-              <Bar data={trendData} options={trendOptions} />
+            {/* Recharts Bar Chart */}
+            <div className="h-[240px] w-full mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={rechartsTrendData}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#059669" stopOpacity={0.7} />
+                    </linearGradient>
+                    <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#e11d48" stopOpacity={0.7} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="rgba(148, 163, 184, 0.15)"
+                  />
+                  <XAxis
+                    dataKey="name"
+                    tickLine={false}
+                    axisLine={{ stroke: "rgba(148, 163, 184, 0.2)" }}
+                    tick={{ fill: "#94a3b8", fontSize: 11, fontWeight: 600 }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: "#94a3b8", fontSize: 10 }}
+                    tickFormatter={(val) =>
+                      val >= 1000 ? `₹${(val / 1000).toFixed(0)}k` : `₹${val}`
+                    }
+                  />
+                  <RechartsTooltip content={<CustomTrendTooltip />} />
+                  <RechartsLegend
+                    verticalAlign="top"
+                    align="right"
+                    iconType="circle"
+                    iconSize={8}
+                    wrapperStyle={{
+                      paddingBottom: "12px",
+                      fontSize: "11px",
+                      fontWeight: "700",
+                    }}
+                  />
+                  <Bar
+                    dataKey="income"
+                    name="Income Budget"
+                    fill="url(#incomeGradient)"
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={28}
+                  />
+                  <Bar
+                    dataKey="expense"
+                    name="Actual Expense"
+                    fill="url(#expenseGradient)"
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={28}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </motion.div>
 
@@ -809,7 +855,7 @@ function Dashboard() {
 
         {/* --- Sidebar Right (1 Col) --- */}
         <div className="flex flex-col gap-8">
-          {/* Category Distribution */}
+          {/* Category Distribution (Recharts Donut) */}
           <motion.div
             variants={itemVariants}
             className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800/80"
@@ -827,9 +873,47 @@ function Dashboard() {
                 <PieIcon size={20} />
               </div>
             </div>
-            <div className="h-[250px] flex items-center justify-center">
-              {currentMonthExpenses.length > 0 ? (
-                <Doughnut data={doughnutData} options={doughnutOptions} />
+
+            <div className="h-[240px] relative flex items-center justify-center">
+              {pieChartData.length > 0 ? (
+                <>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <RechartsTooltip
+                        content={<CustomPieTooltip totalSpent={totalamt} />}
+                      />
+                      <Pie
+                        data={pieChartData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={58}
+                        outerRadius={85}
+                        paddingAngle={4}
+                        cornerRadius={6}
+                      >
+                        {pieChartData.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={entry.color}
+                            stroke="none"
+                          />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+
+                  {/* Donut Center Summary */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider">
+                      Total
+                    </span>
+                    <span className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
+                      {formatCurrency(totalamt)}
+                    </span>
+                  </div>
+                </>
               ) : (
                 <p className="text-xs text-slate-400 dark:text-slate-500 font-medium text-center">
                   No data available for this month
@@ -840,32 +924,22 @@ function Dashboard() {
             {/* Category Spending Summary List */}
             {currentMonthExpenses.length > 0 && (
               <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800/80 space-y-4">
-                <h4 className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest">
+                <h4 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                   Category Spending Summary
                 </h4>
                 <div className="space-y-3.5">
                   {Object.entries(categoryTotals).map(([category, amount]) => {
                     const percentage =
                       totalamt > 0 ? (amount / totalamt) * 100 : 0;
-
-                    // Simple helper to match color classes
-                    let colorClass = "bg-slate-500";
-                    if (category === "Food") colorClass = "bg-emerald-500";
-                    else if (category === "Transport")
-                      colorClass = "bg-blue-500";
-                    else if (category === "Shopping")
-                      colorClass = "bg-purple-500";
-                    else if (category === "Entertainment")
-                      colorClass = "bg-pink-500";
-                    else if (category === "Utilities")
-                      colorClass = "bg-amber-500";
+                    const catColor = CATEGORY_COLORS[category] || "#64748b";
 
                     return (
                       <div key={category} className="space-y-1">
                         <div className="flex justify-between items-center text-xs font-bold">
                           <div className="flex items-center gap-2">
                             <span
-                              className={`w-2.5 h-2.5 rounded-full ${colorClass}`}
+                              className="w-2.5 h-2.5 rounded-full"
+                              style={{ backgroundColor: catColor }}
                             />
                             <span className="text-slate-700 dark:text-slate-300">
                               {category}
@@ -883,8 +957,11 @@ function Dashboard() {
                         {/* Miniature Progress Bar */}
                         <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden">
                           <div
-                            className={`h-full rounded-full ${colorClass}`}
-                            style={{ width: `${percentage}%` }}
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${percentage}%`,
+                              backgroundColor: catColor,
+                            }}
                           />
                         </div>
                       </div>

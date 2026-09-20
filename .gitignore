@@ -3,12 +3,20 @@
 backend/.env
 frontend/.env
 
-# Dependencies
+# Dependencies & Virtual Envs
 node_modules/
 venv/
+.venv/
 virtualenv001/
+backend/virtualenv001/
+**/virtualenv001/
 __pycache__/
 *.pyc
 
 # System
 .DS_Store
+
+# Internal Documentation & Notes
+FRONTEND_ARCHITECTURE.md
+PROJECT_DETAILS.md
+TASKS.md

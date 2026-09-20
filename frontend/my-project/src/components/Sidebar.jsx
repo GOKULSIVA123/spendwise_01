@@ -8,6 +8,7 @@ import {
   Target,
   Wallet,
   List,
+  Layers,
 } from "lucide-react";
 import { Navcontent } from "../context/Navcontent";
 
@@ -20,11 +21,11 @@ function Sidebar() {
     { path: "/Expense", label: "Expenses", icon: Receipt },
     { path: "/Budget", label: "Budget", icon: Target },
     { path: "/Transactions", label: "Transactions", icon: List },
+    { path: "/Categories", label: "Categories", icon: Layers },
   ];
 
   return (
     <aside className="w-64 h-screen sticky top-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800/80 flex flex-col p-6 gap-8 shadow-sm shrink-0">
-      
       {/* Brand Section */}
       <div className="flex items-center gap-3 px-2 mb-2">
         <div className="bg-teal-600 dark:bg-teal-600 p-2 rounded-lg text-white">
@@ -64,21 +65,19 @@ function Sidebar() {
                 <span className="absolute inset-0 bg-slate-50/50 dark:bg-slate-800/30 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 -z-10" />
               )}
 
-              <IconComponent 
-                size={16} 
+              <IconComponent
+                size={16}
                 className={`relative z-10 transition-colors duration-200 ${
-                  isActive 
-                    ? "text-teal-600 dark:text-teal-400" 
+                  isActive
+                    ? "text-teal-600 dark:text-teal-400"
                     : "text-slate-400 dark:text-slate-500 group-hover:text-teal-600 dark:group-hover:text-teal-400"
-                }`} 
+                }`}
               />
               <span className="relative z-10">{link.label}</span>
             </Link>
           );
         })}
       </nav>
-
-
 
       {/* Footer Branding */}
       <div className="mt-auto pt-6 border-t border-slate-100 dark:border-slate-800">
