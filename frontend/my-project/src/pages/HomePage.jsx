@@ -19,7 +19,8 @@ import axios from "axios";
 
 function HomePage() {
   const { navamt } = useContext(Navcontent);
-  const { expenses } = useContext(Expensecontent);
+  const { expenses: rawExpenses } = useContext(Expensecontent);
+  const expenses = Array.isArray(rawExpenses) ? rawExpenses : [];
   const { getToken } = useAuth();
   const [loadingPlan, setLoadingPlan] = useState(false);
   const [aiResult, setAiResult] = useState(null);

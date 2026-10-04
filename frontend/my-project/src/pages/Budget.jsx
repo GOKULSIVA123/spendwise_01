@@ -46,7 +46,8 @@ function Budget() {
     setActiveMonthKey,
     addNotification,
   } = useContext(Navcontent);
-  const { expenses } = useContext(Expensecontent);
+  const { expenses: rawExpenses } = useContext(Expensecontent);
+  const expenses = Array.isArray(rawExpenses) ? rawExpenses : [];
 
   // Month selection state (defaults to active current month "YYYY-MM")
   const [selectedMonth, setSelectedMonth] = useState(activeMonthKey);

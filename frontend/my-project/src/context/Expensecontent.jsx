@@ -17,10 +17,13 @@ export const ExpenseProvider = ({ children }) => {
           "Content-Type": "application/json",
         },
       });
-      setExpenses(response.data);
-      console.log("expenses", response.data);
+      // Always ensure we store an array — API might return null/object on error
+      const data = response.data;
+      setExpenses(Array.isArray(data) ? data : []);
+      console.log("expenses", data);
     } catch (e) {
       console.log(e);
+      setExpenses([]); // Keep expenses as empty array on failure
     }
   };
   useEffect(() => {

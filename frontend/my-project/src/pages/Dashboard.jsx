@@ -125,7 +125,8 @@ const CustomPieTooltip = ({ active, payload, totalSpent }) => {
 
 function Dashboard() {
   const navigate = useNavigate();
-  const { expenses } = useContext(Expensecontent);
+  const { expenses: rawExpenses } = useContext(Expensecontent);
+  const expenses = Array.isArray(rawExpenses) ? rawExpenses : [];
   const { navamt, getBudgetForMonth } = useContext(Navcontent);
   const [trendRange, setTrendRange] = useState("daily"); // 'daily' | 'weekly' | 'monthly' | 'yearly'
   const [trendSubValue, setTrendSubValue] = useState(

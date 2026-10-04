@@ -16,7 +16,8 @@ import { Themecontent } from "../context/Themecontext";
 
 function Navbar() {
   const { navamt, target1, notifications, markAllNotificationsAsRead, clearNotifications } = useContext(Navcontent);
-  const { expenses } = useContext(Expensecontent);
+  const { expenses: rawExpenses } = useContext(Expensecontent);
+  const expenses = Array.isArray(rawExpenses) ? rawExpenses : [];
   const { theme, setTheme } = useContext(Themecontent);
   const { user } = useUser();
   const { isSignedIn } = useAuth();
@@ -52,7 +53,7 @@ function Navbar() {
     }
   };
 
-  const currentMonthExpenses = expenses.filter((e) => {
+  const currentMonthExpenses = (expenses || []).filter((e) => {
     if (!e.date) return false;
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();

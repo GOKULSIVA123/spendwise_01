@@ -20,7 +20,8 @@ import { Expensecontent } from "../context/Expensecontent";
 
 function Transactions() {
   const navigate = useNavigate();
-  const { expenses } = useContext(Expensecontent);
+  const { expenses: rawExpenses } = useContext(Expensecontent);
+  const expenses = Array.isArray(rawExpenses) ? rawExpenses : [];
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
