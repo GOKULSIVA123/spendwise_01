@@ -25,8 +25,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 load_dotenv()
 
-CLERK_JWKS_URL = os.getenv("CLERK_JWKS_URL")
-CLERK_ISSUER_URL = os.getenv("CLERK_FRONTEND_API")   # Same as CLERK_FRONTEND_API
+CLERK_FRONTEND_API = os.getenv("CLERK_FRONTEND_API", "https://known-catfish-97.clerk.accounts.dev")
+CLERK_JWKS_URL = os.getenv("CLERK_JWKS_URL", f"{CLERK_FRONTEND_API}/.well-known/jwks.json")
+CLERK_ISSUER_URL = os.getenv("CLERK_ISSUER_URL", CLERK_FRONTEND_API)
 
 # Cache for Clerk's public RSA keys — fetched once, reused for all requests
 _PUBLIC_KEYS: dict = {}
