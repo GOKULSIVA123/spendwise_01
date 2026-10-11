@@ -1,12 +1,19 @@
 # FastAPI core framework and ASGI server
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
+python-multipart>=0.0.9
 
-# Async MongoDB driver (replaces pymongo for async operations)
-motor==3.6.0
+# Database ORM & async drivers (SQLAlchemy 2.0 + SQLite async)
+sqlalchemy>=2.0.35
+aiosqlite>=0.20.0
+greenlet>=3.0.3
 
-# Data validation models (replaces manual request.json checks)
+# Data validation models
 pydantic==2.9.2
+
+# Document parsing (GPay Statements, PDF, CSV, Date normalization)
+pypdf>=4.0.0
+python-dateutil>=2.8.2
 
 # Environment variables
 python-dotenv==1.1.1
@@ -14,10 +21,6 @@ python-dotenv==1.1.1
 # JWT token verification for Clerk Auth
 PyJWT==2.10.0
 cryptography==43.0.3
-
-# DNS + TLS for MongoDB Atlas connection
-dnspython==2.7.0
-certifi==2025.11.12
 
 # HTTP requests (used in auth for Clerk JWKS public key fetching)
 requests==2.32.3

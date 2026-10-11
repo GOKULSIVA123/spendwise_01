@@ -1,21 +1,13 @@
 # app.py
-# This is the main FastAPI application file — the equivalent of Flask's create_app().
+# Main FastAPI application file.
 #
 # WHAT THIS FILE DOES:
-# 1. Creates the FastAPI app instance
-# 2. Adds CORS middleware (allows the React frontend to call this backend)
-# 3. Registers startup and shutdown lifecycle events to connect/disconnect MongoDB
+# 1. Creates the FastAPI app instance with lifespan event handler
+# 2. Adds CORS middleware (allowing the React frontend to communicate)
+# 3. Automatically initializes database tables on startup
 # 4. Mounts all API routes from routes.py
-#
-# KEY DIFFERENCES FROM FLASK:
-# - Flask uses @app.before_first_request / MongoClient in create_app()
-# - FastAPI uses @app.on_event("startup") / async Motor connect
-# - Flask uses CORS(app) from flask-cors
-# - FastAPI uses CORSMiddleware added with app.add_middleware(...)
-# - Flask registers blueprints with app.register_blueprint(routes)
-# - FastAPI includes routers with app.include_router(router)
 
-import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -25,6 +17,23 @@ from routes import router
 
 load_dotenv()
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LIFECYCLE MANAGEMENT (LIFESPAN)
+# Initializes DB tables on startup and disposes connections on shutdown.
+# ─────────────────────────────────────────────────────────────────────────────
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Create tables if not present
+    await connect_db()
+    print("🚀 SpendWise FastAPI server is running.")
+    print("📖 API Docs: http://localhost:8000/docs")
+    yield
+    # Shutdown: Cleanly close DB connection pool
+    await disconnect_db()
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # CREATE THE FASTAPI APP
 # ─────────────────────────────────────────────────────────────────────────────
@@ -33,72 +42,39 @@ app = FastAPI(
     title="SpendWise Expense Tracker API",
     description=(
         "REST API for the SpendWise Expense Tracker application. "
-        "Handles expenses, monthly budgets, notifications, and AI insights. "
-        "All endpoints (except /api/health_check) require Clerk JWT authentication."
+        "Built with FastAPI, SQLAlchemy 2.0, and Clerk Auth."
     ),
-    version="2.0.0",
-    # Swagger UI available at: http://localhost:8000/docs
-    # ReDoc available at:      http://localhost:8000/redoc
+    version="2.1.0",
+    lifespan=lifespan,
 )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CORS MIDDLEWARE
-# Allows the React frontend (usually at http://localhost:5173) to make requests.
-# In production, replace "*" with your actual deployed frontend URL.
 # ─────────────────────────────────────────────────────────────────────────────
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],              # React dev server + any deployed frontend
-    allow_credentials=True,           # Allow cookies and auth headers
-    allow_methods=["*"],              # Allow GET, POST, PUT, DELETE, OPTIONS
-    allow_headers=["*"],              # Allow Authorization, Content-Type, etc.
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# LIFECYCLE EVENTS
-# @app.on_event("startup")  — runs ONCE when uvicorn starts the server
-# @app.on_event("shutdown") — runs ONCE when the server is stopped (Ctrl+C)
-# ─────────────────────────────────────────────────────────────────────────────
-
-@app.on_event("startup")
-async def startup_event():
-    """
-    Connects to MongoDB Atlas when the server starts.
-    This ensures the database connection is ready before any requests come in.
-    """
-    await connect_db()
-    print("🚀 SpendWise FastAPI server is running.")
-    print("📖 API Docs: http://localhost:8000/docs")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """
-    Cleanly disconnects from MongoDB when the server stops.
-    Prevents dangling connections.
-    """
-    await disconnect_db()
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# ROOT ENDPOINT (quick sanity check)
+# ROOT ENDPOINT
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.get("/", tags=["Root"])
 async def root():
-    """
-    Root endpoint — returns a simple confirmation message.
-    Visit http://localhost:8000/ in the browser to confirm the server is running.
-    """
-    return {"message": "SpendWise API is running. Visit /docs for the API documentation."}
+    return {
+        "message": "SpendWise API is running with SQLAlchemy. Visit /docs for the API documentation."
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# REGISTER ALL API ROUTES
-# Mounts every endpoint defined in routes.py under this FastAPI app.
+# REGISTER API ROUTES
 # ─────────────────────────────────────────────────────────────────────────────
 
 app.include_router(router)

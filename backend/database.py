@@ -1,71 +1,93 @@
 # database.py
-# This file sets up the async MongoDB connection using Motor.
-# Motor is the async version of PyMongo — it works perfectly with FastAPI
-# because both use Python's asyncio event loop.
+# Sets up the async SQLAlchemy database connection for FastAPI.
 #
-# KEY DIFFERENCE from old code:
-# OLD (Flask + PyMongo):  db = MongoClient(uri).expensetrackerdb04
-# NEW (FastAPI + Motor):  db = AsyncIOMotorClient(uri).expensetrackerdb04
+# Supported Databases:
+# 1. SQLite (Default): sqlite+aiosqlite:///./spendwise.db
+# 2. PostgreSQL (Cloud/Production): postgresql+asyncpg://user:pass@host/db
 #
-# The only rule: every database operation must now use "await" before it.
+# Switching between SQLite and PostgreSQL only requires changing DATABASE_URL in .env!
 
 import os
-import certifi
-import dns.resolver
-from motor.motor_asyncio import AsyncIOMotorClient
+from typing import AsyncGenerator
 from dotenv import load_dotenv
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+from sqlalchemy.orm import DeclarativeBase
 
 load_dotenv()
 
-# Force Google DNS to bypass ISP SRV record block (same fix as Flask version)
-dns.resolver.default_resolver = dns.resolver.Resolver(configure=False)
-dns.resolver.default_resolver.nameservers = ["8.8.8.8"]
+# Read DATABASE_URL from .env or default to local SQLite database
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./spendwise.db")
 
-# Read MongoDB URI from .env file
-MONGO_URI = os.getenv("MONGO_URI")
+# Automatically ensure asyncpg driver prefix for PostgreSQL URLs (e.g. from Neon / Supabase)
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+elif DATABASE_URL.startswith("postgresql://") and not DATABASE_URL.startswith("postgresql+asyncpg://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-# Create the async MongoDB client (Motor)
-# certifi.where() provides the SSL certificate bundle for MongoDB Atlas TLS
-motor_client: AsyncIOMotorClient = None
+# SQLite-specific connection arguments (allow cross-thread async queries)
+connect_args = {}
+if "sqlite" in DATABASE_URL:
+    connect_args = {"check_same_thread": False}
 
-# This is our database object — same as before, just async now
-db = None
+# Create async SQLAlchemy engine
+engine = create_async_engine(
+    DATABASE_URL,
+    connect_args=connect_args,
+    echo=False,
+    future=True,
+)
+
+# Async session factory
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False,
+)
 
 
-def get_db():
+# Declarative Base for all ORM models
+class Base(DeclarativeBase):
+    pass
+
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
-    Returns the active database instance.
-    Used in routes.py and models.py to access MongoDB collections.
-    Collections available:
-        db.expenses       - All user transactions
-        db.budgets        - Monthly budget settings per user
-        db.notifications  - System notification feed per user
+    FastAPI dependency yielding an async SQLAlchemy session.
+    Automatically commits/rollbacks and guarantees the session closes.
     """
-    return db
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
 
 
 async def connect_db():
     """
-    Called once when the FastAPI app starts up (via @app.on_event("startup")).
-    Creates the Motor async client and connects to MongoDB Atlas.
+    Runs on FastAPI startup to automatically create all database tables
+    if they do not already exist.
     """
-    global motor_client, db
     try:
-        motor_client = AsyncIOMotorClient(MONGO_URI, tlsCAFile=certifi.where())
-        db = motor_client.expensetrackerdb04
-        # Ping the database to confirm the connection is alive
-        await motor_client.admin.command("ping")
-        print("✅ MongoDB Atlas connected successfully (Motor Async)")
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        print("✅ Database tables initialized successfully (SQLAlchemy Async)")
     except Exception as e:
-        print(f"❌ MongoDB connection error: {e}")
+        print(f"❌ Database initialization error: {e}")
 
 
 async def disconnect_db():
     """
-    Called once when the FastAPI app shuts down (via @app.on_event("shutdown")).
-    Cleanly closes the Motor connection to avoid resource leaks.
+    Runs on FastAPI shutdown to cleanly dispose of the engine connection pool.
     """
-    global motor_client
-    if motor_client:
-        motor_client.close()
-        print("✅ MongoDB connection closed")
+    if engine:
+        await engine.dispose()
+        print("✅ Database connection closed")

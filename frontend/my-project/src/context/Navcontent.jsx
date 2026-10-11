@@ -1,5 +1,9 @@
 import React, { createContext, useState, useEffect } from "react";
+import axios from "axios";
+import { useAuth } from "@clerk/clerk-react";
 import { toast } from "sonner";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 export const Navcontent = createContext(null);
 
@@ -70,11 +74,22 @@ const getCurrentMonthKey = () => {
   return `${year}-${month}`;
 };
 
+const getInitialWelcomeNotification = () => [
+  {
+    id: "1",
+    text: "Welcome to SpendWise! Set up your Monthly Budget to begin logging expenses.",
+    type: "info",
+    timestamp: new Date().toISOString(),
+    read: false,
+  },
+];
+
 export const NavProvider = ({ children }) => {
+  const { getToken, isSignedIn, userId } = useAuth();
   const [activeMonthKey, setActiveMonthKey] = useState(getCurrentMonthKey());
   const [target1, setTarget1] = useState(0);
 
-  // Global user categories state (presets + custom added ones)
+  // Global user categories state
   const [userCategories, setUserCategories] = useState(() => {
     const saved = localStorage.getItem("spendwise_user_categories");
     if (saved) {
@@ -116,73 +131,126 @@ export const NavProvider = ({ children }) => {
     addNotification(`Category removed.`, "info");
   };
 
-  // Month-keyed storage for budgets: { "2026-09": { income: 50000, categories: { Food: 10000, ... } } }
-  const [monthlyBudgets, setMonthlyBudgets] = useState(() => {
-    const saved = localStorage.getItem("monthly_budgets_by_month");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Failed to parse saved monthly_budgets_by_month", e);
-      }
-    }
-
-    // Auto-migration from legacy single-month keys
-    const currentMonthKey = getCurrentMonthKey();
-    const oldIncome = localStorage.getItem("monthly_budget");
-    const oldCategory = localStorage.getItem("category_budgets");
-
-    let initialIncome = oldIncome ? parseFloat(oldIncome) : 0;
-    let initialCategories = DEFAULT_CATEGORY_BUDGETS;
-
-    if (oldCategory) {
-      try {
-        initialCategories = {
-          ...DEFAULT_CATEGORY_BUDGETS,
-          ...JSON.parse(oldCategory),
-        };
-      } catch (e) {
-        console.error("Failed to parse old category_budgets", e);
-      }
-    }
-
-    return {
-      [currentMonthKey]: {
-        income: initialIncome,
-        categories: initialCategories,
-      },
-    };
+  // State isolated per user
+  const [monthlyBudgets, setMonthlyBudgets] = useState({
+    [getCurrentMonthKey()]: {
+      income: 0,
+      categories: { ...DEFAULT_CATEGORY_BUDGETS },
+    },
   });
 
-  const [notifications, setNotifications] = useState(() => {
-    const saved = localStorage.getItem("global_notifications");
-    return saved
-      ? JSON.parse(saved)
-      : [
-          {
-            id: "1",
-            text: "Welcome to SpendWise! Set up your Monthly Budget to begin logging expenses.",
-            type: "info",
-            timestamp: new Date().toISOString(),
-            read: false,
+  const [notifications, setNotifications] = useState(getInitialWelcomeNotification());
+
+  // Whenever the logged-in user changes (or signs out), reset and load THAT user's data
+  useEffect(() => {
+    if (!userId) {
+      // User signed out: reset state completely
+      setMonthlyBudgets({
+        [getCurrentMonthKey()]: {
+          income: 0,
+          categories: { ...DEFAULT_CATEGORY_BUDGETS },
+        },
+      });
+      setNotifications(getInitialWelcomeNotification());
+      return;
+    }
+
+    // 1. Try loading from user-scoped localStorage cache
+    const cachedBudgets = localStorage.getItem(`spendwise_budgets_${userId}`);
+    if (cachedBudgets) {
+      try {
+        setMonthlyBudgets(JSON.parse(cachedBudgets));
+      } catch (e) {}
+    } else {
+      setMonthlyBudgets({
+        [getCurrentMonthKey()]: {
+          income: 0,
+          categories: { ...DEFAULT_CATEGORY_BUDGETS },
+        },
+      });
+    }
+
+    const cachedNotifs = localStorage.getItem(`spendwise_notifications_${userId}`);
+    if (cachedNotifs) {
+      try {
+        setNotifications(JSON.parse(cachedNotifs));
+      } catch (e) {}
+    } else {
+      setNotifications(getInitialWelcomeNotification());
+    }
+
+    // 2. Fetch fresh user data from SQLite backend
+    fetchBackendData(userId);
+  }, [userId]);
+
+  // Sync state to user-scoped localStorage
+  useEffect(() => {
+    if (userId) {
+      localStorage.setItem(`spendwise_budgets_${userId}`, JSON.stringify(monthlyBudgets));
+    }
+  }, [monthlyBudgets, userId]);
+
+  useEffect(() => {
+    if (userId) {
+      localStorage.setItem(`spendwise_notifications_${userId}`, JSON.stringify(notifications));
+    }
+  }, [notifications, userId]);
+
+  // Fetch budgets & notifications from SQLite backend for the specific user
+  const fetchBackendData = async (activeUserId) => {
+    try {
+      const token = await getToken();
+      if (!token) return;
+
+      // 1. Fetch all monthly budgets from SQLite for this user
+      const budgetRes = await axios.get(`${API_BASE_URL}/api/budgets`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const budgetsList = budgetRes.data?.budgets || [];
+      const budgetMap = {
+        [getCurrentMonthKey()]: {
+          income: 0,
+          categories: { ...DEFAULT_CATEGORY_BUDGETS },
+        },
+      };
+
+      budgetsList.forEach((b) => {
+        budgetMap[b.month] = {
+          income: parseFloat(b.income) || 0,
+          categories: {
+            ...DEFAULT_CATEGORY_BUDGETS,
+            ...(b.categories || {}),
           },
-        ];
-  });
+        };
+      });
 
-  // Sync monthlyBudgets object to localStorage
-  useEffect(() => {
-    localStorage.setItem(
-      "monthly_budgets_by_month",
-      JSON.stringify(monthlyBudgets),
-    );
-  }, [monthlyBudgets]);
+      // Verify the active user hasn't switched mid-request
+      if (activeUserId === userId) {
+        setMonthlyBudgets(budgetMap);
+        console.log(`✅ Budgets synchronized for user ${activeUserId}:`, budgetMap);
+      }
 
-  // Sync notifications to localStorage
-  useEffect(() => {
-    localStorage.setItem("global_notifications", JSON.stringify(notifications));
-  }, [notifications]);
+      // 2. Fetch notifications from SQLite for this user
+      const notifRes = await axios.get(`${API_BASE_URL}/api/notifications`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const notifList = notifRes.data?.notifications;
 
-  // Helper to fetch budget for a specified month key (e.g. "2026-09")
+      if (activeUserId === userId) {
+        if (Array.isArray(notifList) && notifList.length > 0) {
+          setNotifications(notifList);
+        } else {
+          // If new user has no notifications in DB, set clean welcome notification
+          setNotifications(getInitialWelcomeNotification());
+        }
+        console.log(`✅ Notifications synchronized for user ${activeUserId}:`, notifList);
+      }
+    } catch (err) {
+      console.warn("Backend sync fallback to user cache:", err.message);
+    }
+  };
+
+  // Helper to fetch budget for a specified month key (e.g. "2026-10")
   const getBudgetForMonth = (monthKey) => {
     if (monthlyBudgets[monthKey]) {
       return monthlyBudgets[monthKey];
@@ -207,22 +275,50 @@ export const NavProvider = ({ children }) => {
     };
   };
 
-  // Helper to save budget for a specified month key (e.g. "2026-09")
-  const saveBudgetForMonth = (monthKey, { income, categories }) => {
+  // Save budget for a specified month key and sync to SQLite backend
+  const saveBudgetForMonth = async (monthKey, { income, categories }) => {
+    const formattedCategories = {
+      Food: parseFloat(categories?.Food) || 0,
+      Transport: parseFloat(categories?.Transport) || 0,
+      Shopping: parseFloat(categories?.Shopping) || 0,
+      Entertainment: parseFloat(categories?.Entertainment) || 0,
+      Utilities: parseFloat(categories?.Utilities) || 0,
+      Other: parseFloat(categories?.Other) || 0,
+    };
+    const parsedIncome = parseFloat(income) || 0;
+
+    // Optimistic local state update
     setMonthlyBudgets((prev) => ({
       ...prev,
       [monthKey]: {
-        income: parseFloat(income) || 0,
-        categories: {
-          Food: parseFloat(categories?.Food) || 0,
-          Transport: parseFloat(categories?.Transport) || 0,
-          Shopping: parseFloat(categories?.Shopping) || 0,
-          Entertainment: parseFloat(categories?.Entertainment) || 0,
-          Utilities: parseFloat(categories?.Utilities) || 0,
-          Other: parseFloat(categories?.Other) || 0,
-        },
+        income: parsedIncome,
+        categories: formattedCategories,
       },
     }));
+
+    // Sync to SQLite backend
+    try {
+      const token = await getToken();
+      if (token) {
+        await axios.post(
+          `${API_BASE_URL}/api/budget`,
+          {
+            month: monthKey,
+            income: parsedIncome,
+            categories: formattedCategories,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          },
+        );
+        console.log(`✅ Budget for ${monthKey} saved to SQLite backend.`);
+      }
+    } catch (err) {
+      console.error("Failed to persist budget to backend:", err);
+    }
   };
 
   // Reactive values for current active month
@@ -247,7 +343,7 @@ export const NavProvider = ({ children }) => {
     });
   };
 
-  const addNotification = (text, type = "info") => {
+  const addNotification = async (text, type = "info") => {
     const newNotif = {
       id: crypto.randomUUID(),
       text,
@@ -264,14 +360,43 @@ export const NavProvider = ({ children }) => {
     } else {
       toast(text);
     }
+
+    // Sync to SQLite backend
+    try {
+      const token = await getToken();
+      if (token) {
+        await axios.post(
+          `${API_BASE_URL}/api/notifications`,
+          { text, type },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          },
+        );
+      }
+    } catch (err) {
+      console.warn("Failed to save notification to backend:", err.message);
+    }
   };
 
-  const markAllNotificationsAsRead = () => {
+  const markAllNotificationsAsRead = async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
-  const clearNotifications = () => {
+  const clearNotifications = async () => {
     setNotifications([]);
+    try {
+      const token = await getToken();
+      if (token) {
+        await axios.delete(`${API_BASE_URL}/api/notifications`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+    } catch (err) {
+      console.warn("Failed to clear notifications on backend:", err.message);
+    }
   };
 
   const value = {

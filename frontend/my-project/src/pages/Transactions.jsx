@@ -14,14 +14,19 @@ import {
   HelpCircle,
   TrendingDown,
   XCircle,
-  FileText
+  FileText,
+  Sparkles,
+  Trash2,
+  UploadCloud,
 } from "lucide-react";
 import { Expensecontent } from "../context/Expensecontent";
+import GPayUploadModal from "../components/GPayUploadModal";
 
 function Transactions() {
   const navigate = useNavigate();
-  const { expenses: rawExpenses } = useContext(Expensecontent);
+  const { expenses: rawExpenses, deleteExpense } = useContext(Expensecontent);
   const expenses = Array.isArray(rawExpenses) ? rawExpenses : [];
+  const [isGPayModalOpen, setIsGPayModalOpen] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -125,21 +130,37 @@ function Transactions() {
           </div>
         </div>
 
-        {/* Total Stats summary */}
-        <div className="bg-white dark:bg-slate-900 px-6 py-3 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800/80 flex items-center gap-4">
-          <div className="p-3 bg-rose-50 dark:bg-rose-950/20 text-rose-500 rounded-xl">
-            <TrendingDown size={20} />
-          </div>
-          <div>
-            <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-              Total Filtered Spend
-            </p>
-            <h3 className="text-xl font-black text-rose-500 dark:text-rose-400">
-              {formatCurrency(totalAmount)}
-            </h3>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => setIsGPayModalOpen(true)}
+            className="px-5 py-3 bg-slate-900 hover:bg-teal-600 dark:bg-teal-600 dark:hover:bg-teal-500 text-white rounded-2xl shadow-sm hover:shadow-md font-extrabold text-xs tracking-wider uppercase flex items-center gap-2.5 transition-all cursor-pointer active:scale-95"
+          >
+            <UploadCloud size={16} />
+            <span>Import GPay Statement</span>
+          </button>
+
+          {/* Total Stats summary */}
+          <div className="bg-white dark:bg-slate-900 px-6 py-3 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800/80 flex items-center gap-4">
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/20 text-rose-500 rounded-xl">
+              <TrendingDown size={20} />
+            </div>
+            <div>
+              <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                Total Filtered Spend
+              </p>
+              <h3 className="text-xl font-black text-rose-500 dark:text-rose-400">
+                {formatCurrency(totalAmount)}
+              </h3>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* GPay Upload and Review Modal */}
+      <GPayUploadModal
+        isOpen={isGPayModalOpen}
+        onClose={() => setIsGPayModalOpen(false)}
+      />
 
       {/* Filter and Search Bar Card */}
       <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-100 dark:border-slate-805/80 shadow-md flex flex-col md:flex-row gap-4 items-center mb-6">
@@ -236,10 +257,17 @@ function Transactions() {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center justify-between sm:justify-end gap-6 shrink-0">
+                      <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0">
                         <span className="font-black text-sm text-rose-600 dark:text-rose-400">
                           -₹{parseFloat(exp.amount).toFixed(0)}
                         </span>
+                        <button
+                          onClick={() => deleteExpense(exp.id || exp._id)}
+                          className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition cursor-pointer"
+                          title="Delete Transaction"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
                     </motion.div>
                   );

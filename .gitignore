@@ -12,6 +12,8 @@ backend/virtualenv001/
 **/virtualenv001/
 __pycache__/
 *.pyc
+*.db
+backend/*.db
 
 # System
 .DS_Store
