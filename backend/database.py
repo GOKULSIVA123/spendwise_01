@@ -28,10 +28,22 @@ if DATABASE_URL.startswith("postgres://"):
 elif DATABASE_URL.startswith("postgresql://") and not DATABASE_URL.startswith("postgresql+asyncpg://"):
     DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-# SQLite-specific connection arguments (allow cross-thread async queries)
+# Clean up pgbouncer query param for asyncpg compatibility if present
+if "?pgbouncer=true" in DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.replace("?pgbouncer=true", "")
+elif "&pgbouncer=true" in DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.replace("&pgbouncer=true", "")
+
+# Engine connection arguments
 connect_args = {}
 if "sqlite" in DATABASE_URL:
     connect_args = {"check_same_thread": False}
+elif "postgresql" in DATABASE_URL or "postgres" in DATABASE_URL:
+    # Disable prepared statement cache for Supabase pooler (PgBouncer compatibility)
+    connect_args = {
+        "statement_cache_size": 0,
+        "prepared_statement_cache_size": 0,
+    }
 
 # Create async SQLAlchemy engine
 engine = create_async_engine(

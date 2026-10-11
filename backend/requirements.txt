@@ -3,9 +3,10 @@ fastapi==0.115.0
 uvicorn[standard]==0.30.6
 python-multipart>=0.0.9
 
-# Database ORM & async drivers (SQLAlchemy 2.0 + SQLite async)
+# Database ORM & async drivers (SQLAlchemy 2.0 + SQLite async + PostgreSQL async)
 sqlalchemy>=2.0.35
 aiosqlite>=0.20.0
+asyncpg>=0.29.0
 greenlet>=3.0.3
 
 # Data validation models
