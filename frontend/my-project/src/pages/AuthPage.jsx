@@ -32,7 +32,6 @@ function AuthPage() {
 
       {/* Main Container */}
       <div className="w-full max-w-md flex flex-col items-center relative z-10 animate-in fade-in zoom-in-95 duration-500">
-        
         {/* Brand Header (Outside the Card) */}
         <div className="flex flex-col items-center text-center gap-2 select-none mb-8">
           <div className="w-14 h-14 rounded-2xl bg-teal-600 flex items-center justify-center shadow-lg shadow-teal-600/20">
@@ -49,11 +48,12 @@ function AuthPage() {
 
         {/* Action Card Box (wrapping description text and buttons) */}
         <div className="w-full bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-[2rem] p-8 shadow-xl shadow-slate-200/50 dark:shadow-none flex flex-col items-center gap-6 relative overflow-hidden">
-          
           {/* Description (2 lines of text in center) */}
           <div className="text-sm text-slate-600 dark:text-slate-300 font-medium text-center leading-relaxed">
             <p>Track your daily expenses, monitor your active budget limits,</p>
-            <p>and receive smart AI-powered insights to optimize your habits.</p>
+            <p>
+              and receive smart AI-powered insights to optimize your habits.
+            </p>
           </div>
 
           {/* Divider */}
@@ -85,7 +85,6 @@ function AuthPage() {
           {/* Decorative Blur background bubble inside the card */}
           <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-teal-50 dark:bg-teal-950/10 rounded-full blur-2xl opacity-40"></div>
         </div>
-
       </div>
     </div>
   );
