@@ -14,85 +14,21 @@
 
 ---
 
-## 🎯 What Problems Does SpendWise Solve?
+**The Concept:**
+Traditional expense trackers only show backward-looking data after money is already gone. SpendWise bridges the gap between raw transaction logging and behavioral finance by pairing instant statement ingestion with AI-driven habit coaching.
 
-SpendWise is designed around a single core mission: **to help users build better financial habits and stop overspending.** We use instant statement ingestion simply as a bridge to get real financial data onto the dashboard so that Google Gemini AI can deliver deep, personalized coaching.
+Key Problems Solved (Recruiter-Facing Summary):
 
-Here are the five core problems SpendWise solves:
+The Habit Guidance Gap: Moves beyond basic transaction logs by using Google Gemini AI to analyze category-wise spending leaks and deliver personalized financial habit coaching.
 
-### 1. 🤖 Lack of Guidance to Improve Financial Habits (The Core Mission)
-* **The Problem**: Traditional trackers only show historical numbers after money has already left your account. They don't guide you on how to change your behavior, identify budget leaks, or build lasting wealth.
-* **SpendWise Solution**: **Gemini AI Category & Overall Habit Coaching**. Google Gemini AI analyzes each individual budget category (*Food, Transport, Shopping, Entertainment, Utilities*) to reveal exact overspending leaks, calculates your overall monthly financial health score, and delivers actionable, personalized daily and weekly habits to help you save and optimize your finances.
+Eliminating Manual Tracking Friction: Features a 1-click GPay and UPI statement parser (CSV/PDF) to automate data ingestion and bypass manual entry drop-off.
 
-### 2. ⚡ Manual Logging Friction (The Data Bridge)
-* **The Problem**: Entering every ₹20 chai, ₹150 Swiggy, or fuel transaction by hand is tedious. 80% of users quit tracking within four days.
-* **SpendWise Solution**: **1-Click GPay & UPI Statement Upload**. To feed the AI accurate real-world data without user fatigue, users can simply upload a Google Pay or bank statement (CSV or PDF). SpendWise cleans merchant titles, categorizes items, deduplicates, and syncs them to the dashboard in seconds.
+Historical Data Integrity: Solves retroactive budget overwriting using isolated relational month-scoping to preserve long-term financial trends.
 
-### 3. 📅 Multi-Month Budget Overwriting
-* **The Problem**: In typical apps, editing your monthly budget retroactively overwrites past months, corrupting historical tracking and distorting AI analysis.
-* **SpendWise Solution**: **Strict Relational Month Scoping**. An isolated compound database constraint (`user_id`, `month`) ensures each calendar month's budget is independently stored and never contaminated.
+Actionable Financial Visibility: Replaces static numbers with multi-timeframe analytics (Daily to Yearly) and proactive threshold alerts.
 
-### 4. 🔍 Financial Blindspots & Guesswork
-* **The Problem**: Basic trackers show a single number: "You spent ₹X". Users can't see trends or spending spikes across different cycles.
-* **SpendWise Solution**: **Interactive Multi-Timeframe Analytics**. Live dynamic visualizations powered by Recharts across **Daily, Weekly, Monthly, and Yearly** intervals, alongside proactive category overspending threshold alerts.
+Secure Multi-User Isolation: Enforces strict row-level security and session management to prevent cross-account data leaks on shared devices.
 
-### 5. 🔒 Cross-Account Data Leaks on Shared Devices
-* **The Problem**: When family members or colleagues share a device, browser caching often leaks transaction notifications between Google accounts.
-* **SpendWise Solution**: **Row-Level JWT Isolation & Namespaced Caching**. Every API request is verified with asymmetric RS256 Clerk tokens, database queries are strictly scoped to the active user ID, and all browser caches are namespaced per user.
-
----
-
-## 🏗️ System Architecture
-
-```mermaid
-flowchart TD
-    %% CLIENT LAYER
-    subgraph Client ["🖥️ CLIENT LAYER (React 19 + Tailwind v4)"]
-        Dashboard["📊 Analytics Dashboard (Recharts Multi-Timeframe)"]
-        Auth["🔑 Clerk Auth (Google OAuth + RS256 JWT)"]
-        UploadModal["📄 GPay / UPI Statement Ingestion Modal"]
-        AISection["💡 Gemini AI Financial Insights & Habit Coaching"]
-        Context["⚡ Context State (ExpenseContext & NavContext)"]
-    end
-
-    %% SECURITY & GATEWAY
-    subgraph Gateway ["🛡️ API & SECURITY GATEWAY (FastAPI ASGI)"]
-        JWKS["🔐 Clerk JWKS (Public Key Asymmetric Verification)"]
-        Router["🚦 REST API Endpoints (/api/expenses, /api/budgets, /api/ai)"]
-    end
-
-    %% DOCUMENT INGESTION BRIDGE
-    subgraph DocBridge ["⚙️ STATEMENT INGESTION BRIDGE"]
-        FileParser["📑 Multi-Format Parser (pypdf & csv)"]
-        Categorizer["🏷️ Heuristic Classifier (Food, Transport, Shopping...)"]
-        Dedup["🛡️ Deduplication Matcher (user_id, date, amount, title)"]
-    end
-
-    %% PERSISTENCE & AI
-    subgraph DataLayer ["💾 PERSISTENCE & AI COACHING"]
-        ORM["🧱 SQLAlchemy 2.0 Async ORM"]
-        DB[("🗄️ Database: SQLite Local / Cloud PostgreSQL")]
-        Gemini["🤖 Google Gemini AI (Category Analysis & Habit Optimizer)"]
-    end
-
-    %% FLOW CONNECTIONS
-    Auth -->|Bearer JWT Token| Router
-    Router <-->|Verify Signature| JWKS
-    
-    UploadModal -->|Upload GPay/UPI Statement| FileParser
-    FileParser --> Categorizer
-    Categorizer --> Dedup
-    Dedup -->|Preview Candidates| UploadModal
-    UploadModal -->|Bulk Confirm| Router
-
-    Dashboard <--> Context
-    Context <-->|Authenticated HTTP| Router
-
-    Router <-->|Async Session Dependency| ORM
-    ORM <-->|Read / Write| DB
-    Router <-->|Aggregated Monthly Data| Gemini
-    Gemini -.->|Personalized Habit Coaching| AISection
-```
 
 ---
 
