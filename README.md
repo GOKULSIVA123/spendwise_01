@@ -17,7 +17,7 @@
 **The Concept:**
 Traditional expense trackers only show backward-looking data after money is already gone. SpendWise bridges the gap between raw transaction logging and behavioral finance by pairing instant statement ingestion with AI-driven habit coaching.
 
-Key Problems Solved (Recruiter-Facing Summary):
+Key Problems Solved:
 
 **The Habit Guidance Gap:** Moves beyond basic transaction logs by using Google Gemini AI to analyze category-wise spending leaks and deliver personalized financial habit coaching.
 
