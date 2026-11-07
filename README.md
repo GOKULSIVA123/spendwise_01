@@ -19,15 +19,15 @@ Traditional expense trackers only show backward-looking data after money is alre
 
 Key Problems Solved (Recruiter-Facing Summary):
 
-The Habit Guidance Gap: Moves beyond basic transaction logs by using Google Gemini AI to analyze category-wise spending leaks and deliver personalized financial habit coaching.
+**The Habit Guidance Gap:** Moves beyond basic transaction logs by using Google Gemini AI to analyze category-wise spending leaks and deliver personalized financial habit coaching.
 
-Eliminating Manual Tracking Friction: Features a 1-click GPay and UPI statement parser (CSV/PDF) to automate data ingestion and bypass manual entry drop-off.
+**Eliminating Manual Tracking Friction:** Features a 1-click GPay and UPI statement parser (CSV/PDF) to automate data ingestion and bypass manual entry drop-off.
 
-Historical Data Integrity: Solves retroactive budget overwriting using isolated relational month-scoping to preserve long-term financial trends.
+**Historical Data Integrity:** Solves retroactive budget overwriting using isolated relational month-scoping to preserve long-term financial trends.
 
-Actionable Financial Visibility: Replaces static numbers with multi-timeframe analytics (Daily to Yearly) and proactive threshold alerts.
+**Actionable Financial Visibility:** Replaces static numbers with multi-timeframe analytics (Daily to Yearly) and proactive threshold alerts.
 
-Secure Multi-User Isolation: Enforces strict row-level security and session management to prevent cross-account data leaks on shared devices.
+**Secure Multi-User Isolation:** Enforces strict row-level security and session management to prevent cross-account data leaks on shared devices.
 
 
 ---
